@@ -8,12 +8,12 @@ export class Cliente {
     @Column()
     nombre:string
     @Column()
-    telefono:number
+    telefono:string
     @Column({unique: true})
     correo:string
 
     @Column({
-        default: true
+        default: false
     })
     esMayoreo:boolean
     @CreateDateColumn()

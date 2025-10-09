@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsString, Length } from "class-validator";
+import { IsEmail, IsNotEmpty, IsString, Length, MaxLength } from "class-validator";
 
 export class UpdateClienteDto {
      @IsNotEmpty()
@@ -7,9 +7,9 @@ export class UpdateClienteDto {
         nombre:string
     
         @IsNotEmpty()
-        @Length(3,15)
-        @IsNumber()
-        telefono:number
+        @IsString()
+        @MaxLength(15)
+        telefono: string;
     
         @IsString()
         @IsNotEmpty()
