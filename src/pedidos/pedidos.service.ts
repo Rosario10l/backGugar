@@ -1,26 +1,83 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Pedido } from './entities/pedido.entity';
+import { Repository } from 'typeorm';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 
 @Injectable()
 export class PedidosService {
-  create(createPedidoDto: CreatePedidoDto) {
-    return 'This action adds a new pedido';
+constructor(
+    @InjectRepository(Pedido)
+  private pedidoRepo: Repository<Pedido>){ }
+
+
+  async createPedido(CreatePedidoDto: CreatePedidoDto) {
+    try {
+      const newPedido = this.pedidoRepo.create(CreatePedidoDto);
+      await this.pedidoRepo.save(newPedido);
+      return newPedido;
+    } catch (error) {
+      throw new InternalServerErrorException('Error al crear el pedido');
+    }
   }
 
-  findAll() {
-    return `This action returns all pedidos`;
+    async findAll() {
+    try {
+      return await this.pedidoRepo.find();
+    } catch (error) {
+      throw new InternalServerErrorException('Error al obtener los pedidos');
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} pedido`;
+
+  async findOne(id: number) {
+    try {
+      const pedido = await this.pedidoRepo.findOneBy({ id });
+      if (!pedido) {
+        throw new NotFoundException(`pedido con el id: ${id} no encontrado`);
+      }
+      return pedido;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al buscar el pedido');
+    }
   }
 
-  update(id: number, updatePedidoDto: UpdatePedidoDto) {
-    return `This action updates a #${id} pedido`;
+ 
+  async updatePedido(id: number, UpdatePedidoDto: UpdatePedidoDto) {
+    try {
+      const pedido = await this.pedidoRepo.findOneBy({ id });
+      if (!pedido) {
+        throw new NotFoundException(`Empleado con el id: ${id} no encontrado`);
+      }
+      const updatePedido = this.pedidoRepo.merge(pedido, UpdatePedidoDto);
+      return await this.pedidoRepo.save(updatePedido);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al actualizar el pedido');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} pedido`;
+
+   async removePedido(id: number) {
+    try {
+      const pedido = await this.pedidoRepo.findOneBy({id});
+      if(!pedido){
+        throw new NotFoundException(`pedido con el id: ${id} no encontrado`);
+      }
+      await this.pedidoRepo.remove(pedido);
+      return {message:`pedido con el id: ${id} se ha eliminado`};
+
+    } catch (error){
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al eliminar el pedido');
+    }
   }
 }

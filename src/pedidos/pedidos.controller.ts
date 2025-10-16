@@ -9,10 +9,10 @@ export class PedidosController {
 
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto) {
-    return this.pedidosService.create(createPedidoDto);
+    return this.pedidosService.createPedido(createPedidoDto);
   }
 
-  @Get()
+  @Get('all')
   findAll() {
     return this.pedidosService.findAll();
   }
@@ -24,11 +24,11 @@ export class PedidosController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePedidoDto: UpdatePedidoDto) {
-    return this.pedidosService.update(+id, updatePedidoDto);
+    return this.pedidosService.updatePedido(+id, updatePedidoDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.pedidosService.remove(+id);
+    return this.pedidosService.removePedido(+id);
   }
 }
