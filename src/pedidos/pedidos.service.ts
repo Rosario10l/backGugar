@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Pedido } from './entities/pedido.entity';
 import { Repository } from 'typeorm';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
+import { UpdateEstadoPedidoDto } from './dto/update-estado-pedido.dto';
 
 @Injectable()
 export class PedidosService {
@@ -47,21 +48,29 @@ constructor(
   }
 
  
-  async updatePedido(id: number, UpdatePedidoDto: UpdatePedidoDto) {
+  // En tu pedidos.service.ts - método updatePedido
+async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
     try {
-      const pedido = await this.pedidoRepo.findOneBy({ id });
-      if (!pedido) {
-        throw new NotFoundException(`Empleado con el id: ${id} no encontrado`);
-      }
-      const updatePedido = this.pedidoRepo.merge(pedido, UpdatePedidoDto);
-      return await this.pedidoRepo.save(updatePedido);
+        const pedido = await this.pedidoRepo.findOneBy({ id });
+        if (!pedido) {
+            throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
+        }
+        
+        // Si se actualiza la cantidad, recalcular el total
+        if (updatePedidoDto.cantidadGarrafones) {
+            pedido.cantidadGarrafones = updatePedidoDto.cantidadGarrafones;
+        }
+        
+        // Actualizar otros campos
+        const updatedPedido = this.pedidoRepo.merge(pedido, updatePedidoDto);
+        return await this.pedidoRepo.save(updatedPedido);
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Error al actualizar el pedido');
+        if (error instanceof NotFoundException) {
+            throw error;
+        }
+        throw new InternalServerErrorException('Error al actualizar el pedido');
     }
-  }
+}
 
 
    async removePedido(id: number) {
@@ -80,4 +89,51 @@ constructor(
       throw new InternalServerErrorException('Error al eliminar el pedido');
     }
   }
+
+
+  async calcularTotalPedido(id: number, precioPorGarrafon: number): Promise<Pedido> {
+        try {
+            const pedido = await this.pedidoRepo.findOneBy({ id });
+            if (!pedido) {
+                throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
+            }
+
+            // Calcular y actualizar el total
+            pedido.calcularTotal(precioPorGarrafon);
+            return await this.pedidoRepo.save(pedido);
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Error al calcular el total del pedido');
+        }
+    }
+
+
+
+    async actualizarEstadoPedido(id: number, updateEstadoPedidoDto: UpdateEstadoPedidoDto): Promise<Pedido> {
+    try {
+      const pedido = await this.pedidoRepo.findOneBy({ id });
+      if (!pedido) {
+        throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
+      }
+
+      // Actualizar el estado usando el método de la entidad
+      pedido.actualizarEstado(updateEstadoPedidoDto.estado);
+      
+      return await this.pedidoRepo.save(pedido);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      if (error.message.includes('Estado no válido')) {
+        throw new BadRequestException(error.message);
+      }
+      throw new InternalServerErrorException('Error al actualizar el estado del pedido');
+    }
+  }
+
+
+   
+
 }

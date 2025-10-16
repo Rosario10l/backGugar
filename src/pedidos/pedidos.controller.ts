@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { PedidosService } from './pedidos.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
+import { UpdateEstadoPedidoDto } from './dto/update-estado-pedido.dto';
 
 @Controller('pedidos')
 export class PedidosController {
@@ -30,5 +31,21 @@ export class PedidosController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pedidosService.removePedido(+id);
+  }
+
+   @Post(':id/calcular-total')
+    calcularTotal(
+        @Param('id', ParseIntPipe) id: number,
+        @Query('precioPorGarrafon', ParseIntPipe) precioPorGarrafon: number
+    ) {
+        return this.pedidosService.calcularTotalPedido(id, precioPorGarrafon);
+    }
+
+     @Patch(':id/estado')
+  actualizarEstado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateEstadoPedidoDto: UpdateEstadoPedidoDto
+  ) {
+    return this.pedidosService.actualizarEstadoPedido(id, updateEstadoPedidoDto);
   }
 }

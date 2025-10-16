@@ -1,6 +1,8 @@
+import { PartialType } from "@nestjs/mapped-types"
 import { IsNumber, IsOptional, IsString } from "class-validator"
+import { CreatePedidoDto } from "./create-pedido.dto"
 
-export class UpdatePedidoDto {
+export class UpdatePedidoDto extends PartialType(CreatePedidoDto){
             @IsOptional()
             @IsNumber()
             cantidadGarrafones:number
@@ -8,8 +10,4 @@ export class UpdatePedidoDto {
             @IsOptional()
             @IsString()
             estado:string
-    
-            @IsOptional()
-            @IsNumber()
-            total:number
 }
