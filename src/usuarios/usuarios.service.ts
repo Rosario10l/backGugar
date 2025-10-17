@@ -18,12 +18,17 @@ async create(data: CreateUsuarioDto): Promise<Usuario> {
     return this.usuarioRepository.save(nuevoUsuario);
   }
 
-  findAll() {
-    return `This action returns all usuarios`;
+async  findAll():Promise<Usuario[]> {
+    return this.usuarioRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} usuario`;
+async  findOne(id: number): Promise<Usuario> {
+
+  const usuario = await this.usuarioRepository.findOneBy({})
+  if(!usuario){
+    throw new Error('Usuario no encontrado')
+  }
+  return usuario
   }
 
   update(id: number, updateUsuarioDto: UpdateUsuarioDto) {
