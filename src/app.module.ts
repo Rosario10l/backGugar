@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PedidosModule } from './pedidos/pedidos.module';
 import { ClientesModule } from './clientes/clientes.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { ClientesModule } from './clientes/clientes.module';
       autoLoadEntities:true,
       synchronize: true, 
     }),
+    PedidosModule,
     ClientesModule,
   ],
   controllers: [AppController],
