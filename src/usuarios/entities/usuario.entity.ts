@@ -3,8 +3,8 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeor
 
 @Entity()
 export class Usuario {
-    @PrimaryGeneratedColumn('uuid') 
-  id: string;
+    @PrimaryGeneratedColumn() 
+  id: number;
 
   @Column({ type: 'varchar', length: 100, nullable: false })
   name: string;
