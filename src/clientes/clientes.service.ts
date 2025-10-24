@@ -78,4 +78,21 @@ async findAll() {
       throw new InternalServerErrorException('Error al eliminar el cliente');
     }
   }
+
+
+
+    // FUNCIÓN VER PEDIDOS DEL CLIENTE
+    async verPedidos(clienteId: number) {
+        const cliente = await this.clienteRepo.findOne({
+            where: { id: clienteId },
+            relations: ['pedidos'] // Esto carga los pedidos relacionados
+        });
+
+        if (!cliente) {
+            throw new NotFoundException(`Cliente con ID ${clienteId} no encontrado`);
+        }
+
+        return cliente.pedidos;
+    }
+
 }

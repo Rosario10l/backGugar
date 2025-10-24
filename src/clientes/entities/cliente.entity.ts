@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Pedido } from "src/pedidos/entities/pedido.entity";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Cliente {
@@ -16,6 +17,11 @@ export class Cliente {
         default: false
     })
     esMayoreo:boolean
+    
     @CreateDateColumn()
     createdAt:Date
+
+    //RELACIÓN CON PEDIDOS
+    @OneToMany(() => Pedido, (pedido) => pedido.cliente)
+    pedidos: Pedido[];
 }

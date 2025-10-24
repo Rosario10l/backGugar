@@ -9,5 +9,9 @@ export class CreatePedidoDto {
         @IsNotEmpty()
         @IsString()
         estado?:string
+
+        @IsNotEmpty()
+        @IsNumber()
+        clienteId: number;
         
 }

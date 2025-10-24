@@ -1,4 +1,5 @@
-import { BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm"
+import { Cliente } from "src/clientes/entities/cliente.entity";
+import { BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
 
 @Entity()
 export class Pedido {
@@ -38,4 +39,10 @@ export class Pedido {
             this.estado = 'pendiente';
         }
     }
+
+
+    // RELACIÓN CON CLIENTE
+    @ManyToOne(() => Cliente, (cliente) => cliente.pedidos)
+    @JoinColumn({ name: 'clienteId' })
+    cliente: Cliente;
 }
