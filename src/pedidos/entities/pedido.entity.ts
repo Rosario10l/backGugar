@@ -14,6 +14,8 @@ export class Pedido {
         total:number;
         @CreateDateColumn()
         fecha:Date;
+        @Column()
+        clienteId: number;
 
         // Método para calcular el total
     calcularTotal(precioPorGarrafon: number): void {

@@ -5,20 +5,86 @@ import { Repository } from 'typeorm';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { UpdateEstadoPedidoDto } from './dto/update-estado-pedido.dto';
+import { Cliente } from 'src/clientes/entities/cliente.entity';
+import { Precio } from './entities/precio.entity';
 
 @Injectable()
 export class PedidosService {
 constructor(
     @InjectRepository(Pedido)
-  private pedidoRepo: Repository<Pedido>){ }
+    private pedidoRepo: Repository<Pedido>,
+    
+    @InjectRepository(Cliente)
+    private clienteRepo: Repository<Cliente>,
+
+    @InjectRepository(Precio)
+    private precioRepo: Repository<Precio>,
+  ) {
+    this.inicializarPrecios(); // Se ejecuta al iniciar el servicio
+  }
 
 
-  async createPedido(CreatePedidoDto: CreatePedidoDto) {
+ private async inicializarPrecios() {
+    const preciosExistentes = await this.precioRepo.find();
+    
+    if (preciosExistentes.length === 0) {
+      const preciosIniciales = [
+        { 
+          tipoCompra: 'menudeo', 
+          precioPorGarrafon: 50, 
+          fechaVigencia: new Date() 
+        },
+        { 
+          tipoCompra: 'mayoreo', 
+          precioPorGarrafon: 45, 
+          fechaVigencia: new Date() 
+        }
+      ];
+      
+      await this.precioRepo.save(preciosIniciales);
+      console.log('Precios iniciales creados automáticamente');
+    }
+  }
+
+  async createPedido(createPedidoDto: CreatePedidoDto) {
     try {
-      const newPedido = this.pedidoRepo.create(CreatePedidoDto);
+      // Verificar que el cliente existe
+      const cliente = await this.clienteRepo.findOne({
+        where: { id: createPedidoDto.clienteId }
+      });
+      
+      if (!cliente) {
+        throw new NotFoundException(`Cliente con ID ${createPedidoDto.clienteId} no encontrado`);
+      }
+
+      // OBTENER PRECIO SEGÚN esMayoreo (true = mayoreo, false = menudeo)
+      const tipoCompra = cliente.esMayoreo ? 'mayoreo' : 'menudeo';
+      const precioActual = await this.precioRepo.findOne({
+        where: { tipoCompra },
+        order: { fechaVigencia: 'DESC' }
+      });
+
+      if (!precioActual) {
+        throw new NotFoundException(`No se encontró precio para ${tipoCompra}`);
+      }
+
+      const newPedido = this.pedidoRepo.create(createPedidoDto);
+      
+      // Calcular el total con el precio actual
+      newPedido.calcularTotal(precioActual.precioPorGarrafon);
+      
       await this.pedidoRepo.save(newPedido);
-      return newPedido;
+      
+      return {
+        ...newPedido,
+        precioAplicado: precioActual.precioPorGarrafon,
+        tipoCompra: tipoCompra,
+        esMayoreo: cliente.esMayoreo // Para verificar en respuesta
+      };
     } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Error al crear el pedido');
     }
   }
@@ -91,23 +157,38 @@ async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
   }
 
 
-  async calcularTotalPedido(id: number, precioPorGarrafon: number): Promise<Pedido> {
-        try {
-            const pedido = await this.pedidoRepo.findOneBy({ id });
-            if (!pedido) {
-                throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
-            }
+  async calcularTotalPedido(id: number): Promise<Pedido> {
+    try {
+      const pedido = await this.pedidoRepo.findOne({
+        where: { id },
+        relations: ['cliente']
+      });
+      
+      if (!pedido) {
+        throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
+      }
 
-            // Calcular y actualizar el total
-            pedido.calcularTotal(precioPorGarrafon);
-            return await this.pedidoRepo.save(pedido);
-        } catch (error) {
-            if (error instanceof NotFoundException) {
-                throw error;
-            }
-            throw new InternalServerErrorException('Error al calcular el total del pedido');
-        }
+      // Usar esMayoreo para determinar el tipo de compra
+      const tipoCompra = pedido.cliente.esMayoreo ? 'mayoreo' : 'menudeo';
+      const precioActual = await this.precioRepo.findOne({
+        where: { tipoCompra },
+        order: { fechaVigencia: 'DESC' }
+      });
+
+      if (!precioActual) {
+        throw new NotFoundException(`No se encontró precio para ${tipoCompra}`);
+      }
+
+      // Recalcular el total
+      pedido.calcularTotal(precioActual.precioPorGarrafon);
+      return await this.pedidoRepo.save(pedido);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al calcular el total del pedido');
     }
+  }
 
 
 

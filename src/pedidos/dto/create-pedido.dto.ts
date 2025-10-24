@@ -12,6 +12,7 @@ export class CreatePedidoDto {
 
         @IsNotEmpty()
         @IsNumber()
+        @Min(1, { message: 'El ID del cliente es requerido' })
         clienteId: number;
         
 }

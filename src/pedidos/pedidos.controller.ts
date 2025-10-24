@@ -19,27 +19,24 @@ export class PedidosController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseIntPipe) id: string) {
     return this.pedidosService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePedidoDto: UpdatePedidoDto) {
+  update(@Param('id', ParseIntPipe) id: string, @Body() updatePedidoDto: UpdatePedidoDto) {
     return this.pedidosService.updatePedido(+id, updatePedidoDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseIntPipe) id: string) {
     return this.pedidosService.removePedido(+id);
   }
 
-   @Post(':id/calcular-total')
-    calcularTotal(
-        @Param('id', ParseIntPipe) id: number,
-        @Query('precioPorGarrafon', ParseIntPipe) precioPorGarrafon: number
-    ) {
-        return this.pedidosService.calcularTotalPedido(id, precioPorGarrafon);
-    }
+     @Post(':id/calcular-total')
+  calcularTotal(@Param('id', ParseIntPipe) id: number) {
+    return this.pedidosService.calcularTotalPedido(id);
+  }
 
      @Patch(':id/estado')
   actualizarEstado(
