@@ -9,10 +9,10 @@ export class PreciosController {
 
   @Post()
   create(@Body() createPrecioDto: CreatePrecioDto) {
-    return this.preciosService.create(createPrecioDto);
+    return this.preciosService.createPrecio(createPrecioDto);
   }
 
-  @Get()
+  @Get("all")
   findAll() {
     return this.preciosService.findAll();
   }
@@ -24,11 +24,11 @@ export class PreciosController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePrecioDto: UpdatePrecioDto) {
-    return this.preciosService.update(+id, updatePrecioDto);
+    return this.preciosService.updatePrecio(+id, updatePrecioDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.preciosService.remove(+id);
+    return this.preciosService.removePrecio(+id);
   }
 }
