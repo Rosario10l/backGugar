@@ -6,7 +6,6 @@ import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { UpdateEstadoPedidoDto } from './dto/update-estado-pedido.dto';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
-import { Precio } from './entities/precio.entity';
 
 @Injectable()
 export class PedidosService {
@@ -17,14 +16,14 @@ constructor(
     @InjectRepository(Cliente)
     private clienteRepo: Repository<Cliente>,
 
-    @InjectRepository(Precio)
-    private precioRepo: Repository<Precio>,
+    //@InjectRepository(Precio)
+    //private precioRepo: Repository<Precio>,
   ) {
-    this.inicializarPrecios(); // Se ejecuta al iniciar el servicio
+   // this.inicializarPrecios(); // Se ejecuta al iniciar el servicio
   }
 
 
- private async inicializarPrecios() {
+ /*private async inicializarPrecios() {
     const preciosExistentes = await this.precioRepo.find();
     
     if (preciosExistentes.length === 0) {
@@ -44,9 +43,9 @@ constructor(
       await this.precioRepo.save(preciosIniciales);
       console.log('Precios iniciales creados automáticamente');
     }
-  }
+  }*/
 
-  async createPedido(createPedidoDto: CreatePedidoDto) {
+ /* async createPedido(createPedidoDto: CreatePedidoDto) {
     try {
       // Verificar que el cliente existe
       const cliente = await this.clienteRepo.findOne({
@@ -87,7 +86,7 @@ constructor(
       }
       throw new InternalServerErrorException('Error al crear el pedido');
     }
-  }
+  }*/
 
     async findAll() {
     try {
@@ -157,7 +156,7 @@ async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
   }
 
 
-  async calcularTotalPedido(id: number): Promise<Pedido> {
+  /*async calcularTotalPedido(id: number): Promise<Pedido> {
     try {
       const pedido = await this.pedidoRepo.findOne({
         where: { id },
@@ -188,7 +187,7 @@ async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
       }
       throw new InternalServerErrorException('Error al calcular el total del pedido');
     }
-  }
+  }*/
 
 
 
