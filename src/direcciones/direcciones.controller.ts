@@ -9,10 +9,10 @@ export class DireccionesController {
 
   @Post()
   create(@Body() createDireccioneDto: CreateDireccioneDto) {
-    return this.direccionesService.create(createDireccioneDto);
+    return this.direccionesService.createDireccion(createDireccioneDto);
   }
 
-  @Get()
+  @Get('all')
   findAll() {
     return this.direccionesService.findAll();
   }
@@ -24,11 +24,11 @@ export class DireccionesController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateDireccioneDto: UpdateDireccioneDto) {
-    return this.direccionesService.update(+id, updateDireccioneDto);
+    return this.direccionesService.updateDireccion(+id, updateDireccioneDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.direccionesService.remove(+id);
+    return this.direccionesService.removeDireccion(+id);
   }
 }
