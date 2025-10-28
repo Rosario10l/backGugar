@@ -2,10 +2,11 @@ import { BadRequestException, Injectable, InternalServerErrorException, NotFound
 import { InjectRepository } from '@nestjs/typeorm';
 import { Pedido } from './entities/pedido.entity';
 import { Repository } from 'typeorm';
-import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { UpdateEstadoPedidoDto } from './dto/update-estado-pedido.dto';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
+import { Precio } from 'src/precios/entities/precio.entity';
+import { CreatePedidoDto } from './dto/create-pedido.dto';
 
 @Injectable()
 export class PedidosService {
@@ -16,36 +17,12 @@ constructor(
     @InjectRepository(Cliente)
     private clienteRepo: Repository<Cliente>,
 
-    //@InjectRepository(Precio)
-    //private precioRepo: Repository<Precio>,
-  ) {
-   // this.inicializarPrecios(); // Se ejecuta al iniciar el servicio
-  }
+    @InjectRepository(Precio)
+    private precioRepo: Repository<Precio>,
+  ) { }
 
 
- /*private async inicializarPrecios() {
-    const preciosExistentes = await this.precioRepo.find();
-    
-    if (preciosExistentes.length === 0) {
-      const preciosIniciales = [
-        { 
-          tipoCompra: 'menudeo', 
-          precioPorGarrafon: 50, 
-          fechaVigencia: new Date() 
-        },
-        { 
-          tipoCompra: 'mayoreo', 
-          precioPorGarrafon: 45, 
-          fechaVigencia: new Date() 
-        }
-      ];
-      
-      await this.precioRepo.save(preciosIniciales);
-      console.log('Precios iniciales creados automáticamente');
-    }
-  }*/
-
- /* async createPedido(createPedidoDto: CreatePedidoDto) {
+async createPedido(createPedidoDto: CreatePedidoDto) {
     try {
       // Verificar que el cliente existe
       const cliente = await this.clienteRepo.findOne({
@@ -56,7 +33,6 @@ constructor(
         throw new NotFoundException(`Cliente con ID ${createPedidoDto.clienteId} no encontrado`);
       }
 
-      // OBTENER PRECIO SEGÚN esMayoreo (true = mayoreo, false = menudeo)
       const tipoCompra = cliente.esMayoreo ? 'mayoreo' : 'menudeo';
       const precioActual = await this.precioRepo.findOne({
         where: { tipoCompra },
@@ -78,7 +54,7 @@ constructor(
         ...newPedido,
         precioAplicado: precioActual.precioPorGarrafon,
         tipoCompra: tipoCompra,
-        esMayoreo: cliente.esMayoreo // Para verificar en respuesta
+        esMayoreo: cliente.esMayoreo
       };
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -86,7 +62,8 @@ constructor(
       }
       throw new InternalServerErrorException('Error al crear el pedido');
     }
-  }*/
+  }
+
 
     async findAll() {
     try {
@@ -112,8 +89,7 @@ constructor(
     }
   }
 
- 
-  // En tu pedidos.service.ts - método updatePedido
+
 async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
     try {
         const pedido = await this.pedidoRepo.findOneBy({ id });
@@ -156,7 +132,7 @@ async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
   }
 
 
-  /*async calcularTotalPedido(id: number): Promise<Pedido> {
+  async calcularTotalPedido(id: number): Promise<Pedido> {
     try {
       const pedido = await this.pedidoRepo.findOne({
         where: { id },
@@ -187,7 +163,7 @@ async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
       }
       throw new InternalServerErrorException('Error al calcular el total del pedido');
     }
-  }*/
+  }
 
 
 

@@ -8,10 +8,10 @@ import { UpdateEstadoPedidoDto } from './dto/update-estado-pedido.dto';
 export class PedidosController {
   constructor(private readonly pedidosService: PedidosService) {}
 
-  /*@Post()
+  @Post()
   create(@Body() createPedidoDto: CreatePedidoDto) {
     return this.pedidosService.createPedido(createPedidoDto);
-  }*/
+  }
 
   @Get('all')
   findAll() {
@@ -33,10 +33,10 @@ export class PedidosController {
     return this.pedidosService.removePedido(+id);
   }
 
-    /* @Post(':id/calcular-total')
+     @Post(':id/calcular-total')
   calcularTotal(@Param('id', ParseIntPipe) id: number) {
     return this.pedidosService.calcularTotalPedido(id);
-  }*/
+  }
 
      @Patch(':id/estado')
   actualizarEstado(
