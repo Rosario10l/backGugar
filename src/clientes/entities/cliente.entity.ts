@@ -1,3 +1,4 @@
+import { Direccione } from "src/direcciones/entities/direccione.entity";
 import { Pedido } from "src/pedidos/entities/pedido.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
@@ -24,4 +25,8 @@ export class Cliente {
     //RELACIÓN CON PEDIDOS
     @OneToMany(() => Pedido, (pedido) => pedido.cliente)
     pedidos: Pedido[];
+
+    //RELACIÓN CON DIRECCIONES
+    @OneToMany(() => Direccione, (direccion) => direccion.cliente)
+    direcciones: Direccione[];
 }

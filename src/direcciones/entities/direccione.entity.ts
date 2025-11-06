@@ -1,4 +1,5 @@
-import { Column,Entity, PrimaryGeneratedColumn } from "typeorm"
+import { Cliente } from "src/clientes/entities/cliente.entity"
+import { Column,Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm"
 
 @Entity()
 export class Direccione {
@@ -15,4 +16,12 @@ export class Direccione {
         codigoPostal:number
         @Column()
         ciudad:string
+
+         // RELACIÓN CON CLIENTE
+        @ManyToOne(() => Cliente, (cliente) => cliente.direcciones)
+        @JoinColumn({ name: 'clienteId' })
+         cliente: Cliente;
+
+        @Column()
+        clienteId: number;
 }

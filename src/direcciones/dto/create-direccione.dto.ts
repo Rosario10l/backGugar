@@ -25,4 +25,8 @@ export class CreateDireccioneDto {
         @Length(3,50)
         @IsString()
         ciudad:string
+
+        @IsNotEmpty()
+        @IsNumber()
+        clienteId: number;
 }

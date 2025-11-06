@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { DireccionesService } from './direcciones.service';
 import { CreateDireccioneDto } from './dto/create-direccione.dto';
 import { UpdateDireccioneDto } from './dto/update-direccione.dto';
@@ -31,4 +31,11 @@ export class DireccionesController {
   remove(@Param('id') id: string) {
     return this.direccionesService.removeDireccion(+id);
   }
+
+   // ENDPOINT PARA OBTENER DIRECCIONES POR CLIENTE
+  @Get('cliente/:clienteId')
+  findByCliente(@Param('clienteId', ParseIntPipe) clienteId: number) {
+    return this.direccionesService.findByCliente(clienteId);
+  }
+
 }
