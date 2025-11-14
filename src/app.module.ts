@@ -4,6 +4,8 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { RutasModule } from './ruta/ruta.module';
+import { AuthModule } from './auth/auth/auth.module';
 
 
 @Module({
@@ -20,6 +22,8 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
     }),
     UsuariosModule,
     NotificacionesModule,
+    RutasModule,
+    AuthModule,
 
   ],
   controllers: [AppController],

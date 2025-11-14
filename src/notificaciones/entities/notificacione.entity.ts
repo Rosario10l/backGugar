@@ -1,25 +1,39 @@
-import { Usuario } from "src/usuarios/entities/usuario.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { 
+  Entity, 
+  PrimaryGeneratedColumn, 
+  Column, 
+  ManyToOne, 
+  JoinColumn,
+  CreateDateColumn
+} from 'typeorm';
+import { Usuario } from 'src/usuarios/entities/usuario.entity';
 
-@Entity('mensajes')
-export class Notificacione {
+@Entity({ name: 'notificaciones' })
+export class Notificacion {
 
-    @PrimaryGeneratedColumn()
-    id: number;
-    @Column({type:'text'})
-    contenido:string;
-    @Column({type:'boolean', default:false})
-    leido:boolean;
-    @CreateDateColumn({ type: 'timestamp' })
-    fecha: Date;
-    @ManyToOne(() =>Usuario,{eager:true})
-    @JoinColumn({name:'remitenteId'})
-    remitente:Usuario;
-    @Column()
-    remitenteId:number;
-    @ManyToOne(() => Usuario, { eager: true })
-    @JoinColumn({ name: 'destinatarioId' }) 
-    destinatario: Usuario;
-    @Column() 
-    destinatarioId: number;
+  @PrimaryGeneratedColumn()
+  idNotificacion: number;
+
+  @Column({ type: 'text' })
+  contenido: string;
+
+  @Column({ type: 'boolean', default: false })
+  leido: boolean;
+
+  @CreateDateColumn({ type: 'timestamp' })
+  fecha: Date;
+
+  @ManyToOne(() => Usuario, { eager: true }) 
+  @JoinColumn({ name: 'idEmisor' })
+  emisor: Usuario;
+
+  @Column() 
+  idEmisor: number;
+
+  @ManyToOne(() => Usuario)
+  @JoinColumn({ name: 'idReceptor' })
+  receptor: Usuario;
+
+  @Column() 
+  idReceptor: number;
 }

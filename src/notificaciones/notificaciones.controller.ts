@@ -1,34 +1,56 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { 
+  Controller, 
+  Get, 
+  Post, 
+  Body, 
+  Patch, 
+  Param, 
+  UseGuards, 
+  Req,
+  ParseIntPipe
+} from '@nestjs/common';
 import { NotificacionesService } from './notificaciones.service';
-import { CreateNotificacioneDto } from './dto/create-notificacione.dto';
-import { UpdateNotificacioneDto } from './dto/update-notificacione.dto';
+import { CreateNotificacionDto } from './dto/create-notificacione.dto';
+import { AuthGuard } from '@nestjs/passport'; 
 
 @Controller('notificaciones')
+@UseGuards(AuthGuard()) 
 export class NotificacionesController {
+  
   constructor(private readonly notificacionesService: NotificacionesService) {}
 
   @Post()
-  create(@Body() createNotificacioneDto: CreateNotificacioneDto) {
-    return this.notificacionesService.create(createNotificacioneDto);
+  create(
+    @Body() createNotificacionDto: CreateNotificacionDto,
+    @Req() req: any, 
+  ) {
+    const emisor = req.user; 
+    return this.notificacionesService.create(createNotificacionDto, emisor);
   }
 
-  @Get()
-  findAll() {
-    return this.notificacionesService.findAll();
+
+  @Get('mis-notificaciones')
+  findAll(@Req() req: any) {
+    const idUsuario = req.user.id; 
+    return this.notificacionesService.findAllForUser(idUsuario);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.notificacionesService.findOne(+id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any
+  ) {
+    const idUsuario = req.user.id;
+    return this.notificacionesService.findOne(id, idUsuario);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateNotificacioneDto: UpdateNotificacioneDto) {
-    return this.notificacionesService.update(+id, updateNotificacioneDto);
-  }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.notificacionesService.remove(+id);
+  @Patch(':id/read')
+  markAsRead(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any
+  ) {
+    const idUsuario = req.user.id;
+    return this.notificacionesService.markAsRead(id, idUsuario);
   }
 }

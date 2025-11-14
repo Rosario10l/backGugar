@@ -1,12 +1,12 @@
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
-export class CreateNotificacioneDto {
-    @IsString()
-    @IsNotEmpty()
-    contenido: string;
+export class CreateNotificacionDto {
 
-    @IsNumber()
-    @IsNotEmpty()
-    remitenteId: number;
+  @IsNumber()
+  @IsNotEmpty()
+  idReceptor: number;
 
+  @IsString()
+  @IsNotEmpty()
+  contenido: string;
 }

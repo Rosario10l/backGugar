@@ -1,39 +1,73 @@
-import { Injectable } from '@nestjs/common';
-import { CreateNotificacioneDto } from './dto/create-notificacione.dto';
-import { UpdateNotificacioneDto } from './dto/update-notificacione.dto';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Notificacione } from './entities/notificacione.entity';
+import { Notificacion } from './entities/notificacione.entity';
+import { CreateNotificacionDto } from './dto/create-notificacione.dto';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
 
 @Injectable()
 export class NotificacionesService {
 
   constructor(
-    @InjectRepository(Notificacione)
-    private readonly notificaionesRepository: Repository<Notificacione>,
+    @InjectRepository(Notificacion)
+    private notificacionRepository: Repository<Notificacion>,
   ) {}
 
-async  create(createNotificacioneDto: CreateNotificacioneDto,remitente:Usuario):Promise<Notificacione> {
-  const{contenido,remitenteId}=createNotificacioneDto;
-  const nuevoMensaje = this.notificaionesRepository.create({contenido,remitente,remitenteId:remitente.id});
+ 
+  async create(
+    createDto: CreateNotificacionDto, 
+    emisor: Usuario
+  ): Promise<Notificacion> {
+    
+    const nuevaNotificacion = this.notificacionRepository.create({
+      ...createDto,
+      idEmisor: emisor.id, 
+    });
 
-    return this.notificaionesRepository.save(nuevoMensaje);
+    return this.notificacionRepository.save(nuevaNotificacion);
   }
 
-  findAll() {
-    return `This action returns all notificaciones`;
+  async findAllForUser(idUsuario: number): Promise<Notificacion[]> {
+    return this.notificacionRepository.find({
+      where: { idReceptor: idUsuario },
+      relations: ['emisor'], 
+      order: { fecha: 'DESC' }, 
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} notificacione`;
+  
+  async findOne(idNotificacion: number, idUsuario: number): Promise<Notificacion> {
+    const notificacion = await this.notificacionRepository.findOne({
+      where: { idNotificacion },
+      relations: ['emisor', 'receptor'],
+    });
+
+    if (!notificacion) {
+      throw new NotFoundException('Notificación no encontrada');
+    }
+
+    if (notificacion.idEmisor !== idUsuario && notificacion.idReceptor !== idUsuario) {
+      throw new ForbiddenException('No tienes permiso para ver esta notificación');
+    }
+
+    return notificacion;
   }
 
-  update(id: number, updateNotificacioneDto: UpdateNotificacioneDto) {
-    return `This action updates a #${id} notificacione`;
-  }
 
-  remove(id: number) {
-    return `This action removes a #${id} notificacione`;
+  async markAsRead(idNotificacion: number, idUsuario: number): Promise<Notificacion> {
+    const notificacion = await this.notificacionRepository.findOne({
+      where: { idNotificacion }
+    });
+
+    if (!notificacion) {
+      throw new NotFoundException('Notificación no encontrada');
+    }
+
+    if (notificacion.idReceptor !== idUsuario) {
+      throw new ForbiddenException('No puedes marcar esta notificación como leída');
+    }
+
+    notificacion.leido = true;
+    return this.notificacionRepository.save(notificacion);
   }
 }
