@@ -2,6 +2,11 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { RutasModule } from './ruta/ruta.module';
+import { AuthModule } from './auth/auth/auth.module';
+
 import { DireccionesModule } from './direcciones/direcciones.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { ClientesModule } from './clientes/clientes.module';
@@ -19,6 +24,11 @@ import { PreciosModule } from './precios/precios.module';
       autoLoadEntities:true,
       synchronize: true, 
     }),
+    UsuariosModule,
+    NotificacionesModule,
+    RutasModule,
+    AuthModule,
+
     DireccionesModule,
     PedidosModule,
     ClientesModule,
