@@ -7,6 +7,10 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { RutasModule } from './ruta/ruta.module';
 import { AuthModule } from './auth/auth/auth.module';
 
+import { DireccionesModule } from './direcciones/direcciones.module';
+import { PedidosModule } from './pedidos/pedidos.module';
+import { ClientesModule } from './clientes/clientes.module';
+import { PreciosModule } from './precios/precios.module';
 
 @Module({
   imports: [
@@ -25,6 +29,10 @@ import { AuthModule } from './auth/auth/auth.module';
     RutasModule,
     AuthModule,
 
+    DireccionesModule,
+    PedidosModule,
+    ClientesModule,
+    PreciosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
