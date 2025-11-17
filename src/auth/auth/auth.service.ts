@@ -23,7 +23,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, salt);
 
     const usuario = this.usuarioRepository.create({
-      name: dto.name,
+      email: dto.email,
       password: hashedPassword,
     });
 
@@ -38,13 +38,13 @@ export class AuthService {
   }
 
   async signIn(dto: AuthCredentialsDto): Promise<{ accessToken: string }> {
-    const { name, password } = dto;
+    const { email, password } = dto;
     
-    const usuario = await this.usuarioRepository.findOneBy({ name });
+    const usuario = await this.usuarioRepository.findOneBy({ email });
 
     if (usuario && (await bcrypt.compare(password, usuario.password))) {
       
-      const payload = { username: usuario.name, sub: usuario.id };
+      const payload = { username: usuario.email, sub: usuario.id };
       const accessToken = this.jwtService.sign(payload);
       
       return { accessToken };
