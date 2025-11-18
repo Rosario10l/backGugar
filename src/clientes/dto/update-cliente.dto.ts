@@ -1,7 +1,7 @@
-import { IsEmail, IsNotEmpty, IsString, Length, MaxLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsNumber, IsString, Length, MaxLength } from "class-validator";
 
 export class UpdateClienteDto {
-     @IsNotEmpty()
+        @IsNotEmpty()
         @Length(3,20)
         @IsString()
         nombre:string
@@ -15,4 +15,8 @@ export class UpdateClienteDto {
         @IsNotEmpty()
         @IsEmail()
         correo:string
+
+        @IsNotEmpty()
+        @IsNumber()
+        tipoPrecioId: number;
 }
