@@ -1,39 +1,29 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
-  ManyToMany, 
-  JoinTable,
-  JoinColumn
-} from 'typeorm';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
-// import { Cliente } from 'src/clientes/entities/cliente.entity'; 
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity({ name: 'rutas' })
+@Entity()
 export class Ruta {
-
   @PrimaryGeneratedColumn()
-  idRuta: number;
+  id: number;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column()
   nombre: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  descripcion: string;
+  @Column()
+  lugarEntrega: string;
 
-  @ManyToOne(() => Usuario, (usuario) => usuario)// agregar rutas asignadas
-  @JoinColumn({ name: 'idRepartidor' }) 
+  @Column('int')
+  cantidad: number;
+
+  @Column({ nullable: true })
+  acciones: string;
+
+  // Guardamos las coordenadas como JSON para no complicarnos con tablas extra
+  // Si usas Postgres usa 'jsonb', si es MySQL usa 'json' o 'simple-json'
+  @Column('simple-json') 
+  coordenadas: any[]; 
+
+  // Relación: Una ruta pertenece a Un Repartidor (Usuario)
+  @ManyToOne(() => Usuario, (usuario) => usuario.id, { eager: true })
   repartidor: Usuario;
-
-  @Column() 
-  idRepartidor: number;
-
-  // @ManyToMany(() => Cliente, (cliente) => cliente.rutas)
-  // @JoinTable({
-  //   name: 'ruta_cliente', 
-  //   joinColumn: { name: 'idRuta' },
-  //   inverseJoinColumn: { name: 'idCliente' }
-  // })
-  // clientes: Cliente[];
 }
