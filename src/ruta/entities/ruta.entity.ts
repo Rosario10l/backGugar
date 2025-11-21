@@ -1,5 +1,6 @@
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { ClienteRuta } from './cliente-ruta.entity'; 
 
 @Entity()
 export class Ruta {
@@ -12,18 +13,11 @@ export class Ruta {
   @Column()
   lugarEntrega: string;
 
-  @Column('int')
-  cantidad: number;
-
-  @Column({ nullable: true })
-  acciones: string;
-
-  // Guardamos las coordenadas como JSON para no complicarnos con tablas extra
-  // Si usas Postgres usa 'jsonb', si es MySQL usa 'json' o 'simple-json'
-  @Column('simple-json') 
-  coordenadas: any[]; 
-
-  // Relación: Una ruta pertenece a Un Repartidor (Usuario)
-  @ManyToOne(() => Usuario, (usuario) => usuario.id, { eager: true })
+  @ManyToOne(() => Usuario, (usuario) => usuario)
+  @JoinColumn({ name: 'idRepartidor' }) 
   repartidor: Usuario;
+
+  // Relación con la tabla intermedia
+  @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.ruta)
+  rutaClientes: ClienteRuta[];
 }

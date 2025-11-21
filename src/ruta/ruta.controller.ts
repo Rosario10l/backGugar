@@ -2,9 +2,13 @@ import {
   Controller, Get, Post, Body, Param, Delete, ParseIntPipe, 
   Patch
 } from '@nestjs/common';
-import { RutasService } from './ruta.service';
+import { RutasService } from './ruta.service'; // OJO: Verifica si es .ruta.service o .rutas.service
 import { CreateRutaDto } from './dto/create-ruta.dto';
-import { UpdateRutaDto } from './dto/update-ruta.dto';
+import { AuthGuard } from '@nestjs/passport'; 
+
+// 1. IMPORTAR EL DTO QUE FALTABA
+import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto'; 
+
 @Controller('rutas')
 export class RutasController {
   
@@ -12,7 +16,13 @@ export class RutasController {
 
   @Post()
   create(@Body() createRutaDto: CreateRutaDto) {
-    return this.rutasService.create(createRutaDto);
+     return this.rutasService.create(createRutaDto);
+  }
+
+  // 2. AGREGAR ESTE MÉTODO QUE FALTABA
+  @Post('asignar-cliente')
+  asignarCliente(@Body() createClienteRutaDto: CreateClienteRutaDto) {
+    return this.rutasService.asignarCliente(createClienteRutaDto);
   }
 
   @Get()
@@ -24,16 +34,18 @@ export class RutasController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.rutasService.findOne(id);
   }
-  @Patch(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateRutaDto: UpdateRutaDto,
-  ) {
-    return this.rutasService.update(id, updateRutaDto);
+
+  // Método viejo comentado (lo puedes borrar si quieres)
+  @Post(':id/clientes')
+  addCliente(@Param('id', ParseIntPipe) idRuta: number) {
+    // return this.rutasService.addClienteToRuta(idRuta, addClienteDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.rutasService.remove(id);
+  @Delete(':id/clientes/:idCliente')
+  removeCliente(
+    @Param('id', ParseIntPipe) idRuta: number,
+    @Param('idCliente', ParseIntPipe) idCliente: number,
+  ) {
+    return this.rutasService.removeClienteFromRuta(idRuta, idCliente);
   }
 }

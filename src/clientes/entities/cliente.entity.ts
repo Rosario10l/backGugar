@@ -1,38 +1,38 @@
 import { Direccione } from "src/direcciones/entities/direccione.entity";
 import { Pedido } from "src/pedidos/entities/pedido.entity";
-import { Precio } from "src/precios/entities/precio.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity"; 
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Cliente {
     @PrimaryGeneratedColumn()
-    id:number
+    id: number;
 
     @Column()
-    nombre:string
-    @Column()
-    telefono:string
-    @Column({unique: true})
-    cte:number
-    @Column()
-    negocio:string
+    nombre: string;
 
     @Column()
-    tipoPrecioId: number;
+    telefono: string;
+
+    @Column({ unique: true })
+    correo: string;
+
+    @Column({ default: false })
+    esMayoreo: boolean;
     
     @CreateDateColumn()
-    createdAt:Date
+    createdAt: Date;
 
-        //RELACIÓN CON PRECIO
-    @ManyToOne(() => Precio, (precio) => precio.clientes)
-    @JoinColumn({ name: 'tipoPrecioId' })
-    tipoPrecio: Precio;
-
-    //RELACIÓN CON PEDIDOS
+    // RELACIÓN CON PEDIDOS
     @OneToMany(() => Pedido, (pedido) => pedido.cliente)
     pedidos: Pedido[];
 
-    //RELACIÓN CON DIRECCIONES
+    // RELACIÓN CON DIRECCIONES
     @OneToMany(() => Direccione, (direccion) => direccion.cliente)
     direcciones: Direccione[];
+
+    // --- CAMBIO AQUÍ ---
+    // Quitamos @ManyToMany. Ahora nos conectamos a la tabla intermedia.
+    @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.cliente)
+    clienteRutas: ClienteRuta[];
 }

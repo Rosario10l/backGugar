@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import { Ruta } from './entities/ruta.entity';
+import { Usuario } from 'src/usuarios/entities/usuario.entity';
+import { Cliente } from 'src/clientes/entities/cliente.entity';
+import { ClienteRuta } from './entities/cliente-ruta.entity'; 
+
 import { CreateRutaDto } from './dto/create-ruta.dto';
-import { Usuario } from 'src/usuarios/entities/usuario.entity'; 
-import { Role } from 'src/auth/enums/role.enum';
-import { UpdateRutaDto } from './dto/update-ruta.dto';
+import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto';
 
 @Injectable()
 export class RutasService {
@@ -16,42 +19,50 @@ export class RutasService {
 
     @InjectRepository(Usuario)
     private usuarioRepository: Repository<Usuario>,
+
+    @InjectRepository(Cliente)
+    private clienteRepository: Repository<Cliente>,
+
+    @InjectRepository(ClienteRuta)
+    private clienteRutaRepository: Repository<ClienteRuta>,
   ) {}
 
   async create(createRutaDto: CreateRutaDto): Promise<Ruta> {
     const { idRepartidor, ...rutaData } = createRutaDto;
 
-    // 1. Validar que el repartidor exista
     const repartidor = await this.usuarioRepository.findOneBy({ id: idRepartidor });
     
     if (!repartidor) {
       throw new NotFoundException(`Usuario repartidor con ID ${idRepartidor} no encontrado`);
     }
     
-    // 2. Opcional: Validar que tenga el rol correcto (si tu Enum usa 'repartidor')
-    if (repartidor.role !== Role.REPARTIDOR) {
-       // Puedes descomentar esto si quieres ser estricto
-       // throw new BadRequestException(`El usuario ${repartidor.name} no es un repartidor`);
-    }
+    // Si tienes lógica de roles, descomenta esto:
+  
+    if (repartidor.role !== 'repartidor') {
+       throw new BadRequestException(`El usuario no es repartidor`);
 
-    // 3. Crear la ruta relacionando al usuario
+    }
     const nuevaRuta = this.rutaRepository.create({
       ...rutaData,
-      repartidor: repartidor,               
+      repartidor: repartidor,
+      rutaClientes: [], 
     });
 
-    return this.rutaRepository.save(nuevaRuta);
+    return await this.rutaRepository.save(nuevaRuta);
+    
   }
+  
 
-  findAll(): Promise<Ruta[]> {
-    // 'relations' carga los datos del repartidor automáticamente
-    return this.rutaRepository.find({ relations: ['repartidor'] });
+  async findAll(): Promise<Ruta[]> {
+    return this.rutaRepository.find({
+      relations: ['repartidor', 'rutaClientes', 'rutaClientes.cliente'] 
+    });
   }
 
   async findOne(id: number): Promise<Ruta> {
     const ruta = await this.rutaRepository.findOne({
-      where: { id },
-      relations: ['repartidor'],
+      where: { idRuta: id },
+      relations: ['repartidor', 'rutaClientes', 'rutaClientes.cliente'],
     });
 
     if (!ruta) {
@@ -59,30 +70,52 @@ export class RutasService {
     }
     return ruta;
   }
-  async update(id: number, updateRutaDto: UpdateRutaDto): Promise<Ruta> {
-    const ruta = await this.findOne(id);
-    
-    const { idRepartidor, ...rest } = updateRutaDto;
 
-    if (idRepartidor) {
-      const nuevoRepartidor = await this.usuarioRepository.findOneBy({ id: idRepartidor });
-      if (!nuevoRepartidor) {
-         throw new NotFoundException(`Usuario repartidor con ID ${idRepartidor} no encontrado`);
+  async asignarCliente(datos: CreateClienteRutaDto) {
+    const { idCliente, rutaId, precioGarrafon, diaSemana, esCredito, requiereFactura } = datos;
+    
+    const ruta = await this.rutaRepository.findOneBy({ idRuta: rutaId });
+    if (!ruta) throw new NotFoundException(`Ruta ${rutaId} no encontrada`);
+
+    const cliente = await this.clienteRepository.findOneBy({ id: idCliente });
+    if (!cliente) throw new NotFoundException(`Cliente ${idCliente} no encontrado`);
+
+    const existe = await this.clienteRutaRepository.findOne({
+      where: {
+        cliente: { id: idCliente },
+        ruta: { idRuta: rutaId }
       }
-      ruta.repartidor = nuevoRepartidor;
+    });
+
+    if (existe) {
+      throw new BadRequestException(`El cliente ${cliente.nombre} ya está en esta ruta.`);
     }
 
-    this.rutaRepository.merge(ruta, rest);
-    return this.rutaRepository.save(ruta);
+    const nuevaAsignacion = this.clienteRutaRepository.create({
+      ruta: ruta,
+      cliente: cliente,
+      precioGarrafon,
+      diaSemana,
+      esCredito: esCredito || false,
+      requiereFactura: requiereFactura || false
+    });
+
+    return await this.clienteRutaRepository.save(nuevaAsignacion);
   }
 
-  async remove(id: number): Promise<{ message: string }> {
-    const result = await this.rutaRepository.delete(id);
+  async removeClienteFromRuta(idRuta: number, idCliente: number) {
+    const relacion = await this.clienteRutaRepository.findOne({
+        where: {
+            ruta: { idRuta: idRuta },
+            cliente: { id: idCliente } 
+        }
+    });
 
-    if (result.affected === 0) {
-      throw new NotFoundException(`Ruta con ID ${id} no encontrada`);
+    if (!relacion) {
+        throw new NotFoundException('Ese cliente no pertenece a esa ruta');
     }
 
-    return { message: `Ruta #${id} eliminada correctamente` };
+ 
+    return await this.clienteRutaRepository.remove(relacion);
   }
 }
