@@ -12,8 +12,10 @@ export class Cliente {
     nombre:string
     @Column()
     telefono:string
-    @Column({unique: true})
-    correo:string
+    @Column()
+    cte:number
+    @Column()
+    negocio:string
 
     @Column()
     tipoPrecioId: number;

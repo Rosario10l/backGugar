@@ -4,12 +4,7 @@ export class UpdateDireccioneDto  {
         @IsOptional()
         @Length(3,30)
         @IsString()
-        calle:string
-
-        @IsOptional()
-        @Length(1,6)
-        @IsNumber()
-        numero:number
+        direccion:string
 
         @IsOptional()
         @Length(3,30)
@@ -25,5 +20,13 @@ export class UpdateDireccioneDto  {
         @Length(3,50)
         @IsString()
         ciudad:string
+
+        @IsOptional()
+        @IsNumber()
+        latitud:number
+        
+        @IsOptional()
+        @IsNumber()
+        longitud:number
 }
 

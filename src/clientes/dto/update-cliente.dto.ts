@@ -11,10 +11,13 @@ export class UpdateClienteDto {
         @MaxLength(15)
         telefono: string;
     
-        @IsString()
+        @IsNumber()
         @IsNotEmpty()
-        @IsEmail()
-        correo:string
+        cte:number
+
+        @IsNotEmpty()
+        @IsString()
+        negocio:string
 
         @IsNotEmpty()
         @IsNumber()
