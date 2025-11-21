@@ -7,15 +7,17 @@ export class Direccione {
         id:number
     
         @Column()
-        calle:string
-        @Column()
-        numero:number
+        direccion:string
         @Column()
         colonia:string
         @Column()
         codigoPostal:number
         @Column()
         ciudad:string
+        @Column()
+        latitud:number
+        @Column()
+        longitud:number
 
          // RELACIÓN CON CLIENTE
         @ManyToOne(() => Cliente, (cliente) => cliente.direcciones)

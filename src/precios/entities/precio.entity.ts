@@ -1,5 +1,6 @@
 
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Cliente } from "src/clientes/entities/cliente.entity";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Precio {
@@ -7,11 +8,15 @@ export class Precio {
         id: number;
     
         @Column()
-        tipoCompra: string; // 'mayoreo' o 'menudeo'
+        tipoCompra: string;
     
         @Column({ type: 'decimal', precision: 10, scale: 2 })
         precioPorGarrafon: number;
     
         @CreateDateColumn()
         fechaVigencia: Date;
+
+        // RELACIÓN CON CLIENTES
+        @OneToMany(() => Cliente, (cliente) => cliente.tipoPrecio)
+        clientes: Cliente[];
 }

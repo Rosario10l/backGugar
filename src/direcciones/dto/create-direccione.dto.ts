@@ -4,12 +4,7 @@ export class CreateDireccioneDto {
         @IsNotEmpty()
         @Length(3,30)
         @IsString()
-        calle:string
-
-        @IsNotEmpty()
-        @Length(1,6)
-        @IsNumber()
-        numero:number
+        direccion:string
 
         @IsNotEmpty()
         @Length(3,30)
@@ -25,6 +20,14 @@ export class CreateDireccioneDto {
         @Length(3,50)
         @IsString()
         ciudad:string
+
+        @IsNotEmpty()
+        @IsNumber()
+        latitud:number
+
+        @IsNotEmpty()
+        @IsNumber()
+        longitud:number
 
         @IsNotEmpty()
         @IsNumber()

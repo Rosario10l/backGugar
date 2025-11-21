@@ -23,46 +23,40 @@ constructor(
 
 
 async createPedido(createPedidoDto: CreatePedidoDto) {
-    try {
-      // Verificar que el cliente existe
-      const cliente = await this.clienteRepo.findOne({
-        where: { id: createPedidoDto.clienteId }
-      });
-      
-      if (!cliente) {
-        throw new NotFoundException(`Cliente con ID ${createPedidoDto.clienteId} no encontrado`);
-      }
+  try {
+    const cliente = await this.clienteRepo.findOne({
+      where: { id: createPedidoDto.clienteId },
+      relations: ['tipoPrecio'] //Cargar tipoPrecio
+    });
 
-      const tipoCompra = cliente.esMayoreo ? 'mayoreo' : 'menudeo';
-      const precioActual = await this.precioRepo.findOne({
-        where: { tipoCompra },
-        order: { fechaVigencia: 'DESC' }
-      });
-
-      if (!precioActual) {
-        throw new NotFoundException(`No se encontró precio para ${tipoCompra}`);
-      }
-
-      const newPedido = this.pedidoRepo.create(createPedidoDto);
-      
-      // Calcular el total con el precio actual
-      newPedido.calcularTotal(precioActual.precioPorGarrafon);
-      
-      await this.pedidoRepo.save(newPedido);
-      
-      return {
-        ...newPedido,
-        precioAplicado: precioActual.precioPorGarrafon,
-        tipoCompra: tipoCompra,
-        esMayoreo: cliente.esMayoreo
-      };
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Error al crear el pedido');
+    if (!cliente) {
+      throw new NotFoundException(`Cliente con ID ${createPedidoDto.clienteId} no encontrado`);
     }
+
+    //OBTENER PRECIO DIRECTAMENTE DE LA RELACIÓN
+    if (!cliente.tipoPrecio) {
+      throw new NotFoundException(`El cliente no tiene un tipo de precio asignado`);
+    }
+
+    const newPedido = this.pedidoRepo.create(createPedidoDto);
+    
+    //CALCULAR CON PRECIO DEL TIPO ASIGNADO
+    newPedido.calcularTotal(cliente.tipoPrecio.precioPorGarrafon);
+    
+    await this.pedidoRepo.save(newPedido);
+    
+    return {
+      ...newPedido,
+      precioAplicado: cliente.tipoPrecio.precioPorGarrafon,
+      tipoCompra: cliente.tipoPrecio.tipoCompra
+    };
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    throw new InternalServerErrorException('Error al crear el pedido');
   }
+}
 
 
     async findAll() {
@@ -91,26 +85,27 @@ async createPedido(createPedidoDto: CreatePedidoDto) {
 
 
 async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
-    try {
-        const pedido = await this.pedidoRepo.findOneBy({ id });
-        if (!pedido) {
-            throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
-        }
-        
-        // Si se actualiza la cantidad, recalcular el total
-        if (updatePedidoDto.cantidadGarrafones) {
-            pedido.cantidadGarrafones = updatePedidoDto.cantidadGarrafones;
-        }
-        
-        // Actualizar otros campos
-        const updatedPedido = this.pedidoRepo.merge(pedido, updatePedidoDto);
-        return await this.pedidoRepo.save(updatedPedido);
-    } catch (error) {
-        if (error instanceof NotFoundException) {
-            throw error;
-        }
-        throw new InternalServerErrorException('Error al actualizar el pedido');
+  try {
+    const pedido = await this.pedidoRepo.findOneBy({ id });
+    if (!pedido) {
+      throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
     }
+    
+    // Si se actualiza la cantidad, recalcular el total
+    if (updatePedidoDto.cantidadGarrafones) {
+      pedido.cantidadGarrafones = updatePedidoDto.cantidadGarrafones;
+      await this.calcularTotalPedido(id);
+    }
+    
+    // Actualizar otros campos
+    const updatedPedido = this.pedidoRepo.merge(pedido, updatePedidoDto);
+    return await this.pedidoRepo.save(updatedPedido);
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    throw new InternalServerErrorException('Error al actualizar el pedido');
+  }
 }
 
 
@@ -133,37 +128,31 @@ async updatePedido(id: number, updatePedidoDto: UpdatePedidoDto) {
 
 
   async calcularTotalPedido(id: number): Promise<Pedido> {
-    try {
-      const pedido = await this.pedidoRepo.findOne({
-        where: { id },
-        relations: ['cliente']
-      });
-      
-      if (!pedido) {
-        throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
-      }
-
-      // Usar esMayoreo para determinar el tipo de compra
-      const tipoCompra = pedido.cliente.esMayoreo ? 'mayoreo' : 'menudeo';
-      const precioActual = await this.precioRepo.findOne({
-        where: { tipoCompra },
-        order: { fechaVigencia: 'DESC' }
-      });
-
-      if (!precioActual) {
-        throw new NotFoundException(`No se encontró precio para ${tipoCompra}`);
-      }
-
-      // Recalcular el total
-      pedido.calcularTotal(precioActual.precioPorGarrafon);
-      return await this.pedidoRepo.save(pedido);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Error al calcular el total del pedido');
+  try {
+    const pedido = await this.pedidoRepo.findOne({
+      where: { id },
+      relations: ['cliente', 'cliente.tipoPrecio'] //Agregar 'cliente.tipoPrecio'
+    });
+    
+    if (!pedido) {
+      throw new NotFoundException(`Pedido con el id: ${id} no encontrado`);
     }
+
+    //se usa la relación directa con precio
+    if (!pedido.cliente.tipoPrecio) {
+      throw new NotFoundException(`El cliente no tiene un tipo de precio asignado`);
+    }
+
+    // Recalcular el total con el precio del tipo asignado al cliente
+    pedido.calcularTotal(pedido.cliente.tipoPrecio.precioPorGarrafon);
+    return await this.pedidoRepo.save(pedido);
+  } catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+    throw new InternalServerErrorException('Error al calcular el total del pedido');
   }
+}
 
 
 

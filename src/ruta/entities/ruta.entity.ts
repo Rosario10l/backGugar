@@ -2,17 +2,16 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColum
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
 import { ClienteRuta } from './cliente-ruta.entity'; 
 
-@Entity({ name: 'rutas' })
+@Entity()
 export class Ruta {
-
   @PrimaryGeneratedColumn()
-  idRuta: number;
+  id: number;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column()
   nombre: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  descripcion: string;
+  @Column()
+  lugarEntrega: string;
 
   @ManyToOne(() => Usuario, (usuario) => usuario)
   @JoinColumn({ name: 'idRepartidor' }) 

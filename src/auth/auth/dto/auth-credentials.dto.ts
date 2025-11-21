@@ -4,7 +4,7 @@ import { IsString, MinLength } from 'class-validator';
 export class AuthCredentialsDto {
   @IsString()
   @MinLength(4)
-  name: string;
+  email: string;
 
   @IsString()
   @MinLength(6)

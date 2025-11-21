@@ -1,12 +1,6 @@
 import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Param, 
-  Delete, 
-  ParseIntPipe, 
-  UseGuards
+  Controller, Get, Post, Body, Param, Delete, ParseIntPipe, 
+  Patch
 } from '@nestjs/common';
 import { RutasService } from './ruta.service'; // OJO: Verifica si es .ruta.service o .rutas.service
 import { CreateRutaDto } from './dto/create-ruta.dto';

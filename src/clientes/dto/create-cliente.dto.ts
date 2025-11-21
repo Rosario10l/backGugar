@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, Length, MaxLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsNumber, IsString, Length, MaxLength } from "class-validator";
 
 export class CreateClienteDto {
     @IsNotEmpty()
@@ -11,8 +11,15 @@ export class CreateClienteDto {
     @MaxLength(15)
     telefono: string;
 
-    @IsString()
+    @IsNumber()
     @IsNotEmpty()
-    @IsEmail()
-    correo:string
+    cte:number
+
+    @IsNotEmpty()
+    @IsString()
+    negocio:string
+
+    @IsNotEmpty()
+    @IsNumber()
+    tipoPrecioId: number;
 }
