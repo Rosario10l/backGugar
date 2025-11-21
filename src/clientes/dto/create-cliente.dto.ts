@@ -15,7 +15,7 @@ export class CreateClienteDto {
     @IsNotEmpty()
     cte:number
 
-    @IsNotEmpty()
+    
     @IsString()
     negocio:string
 

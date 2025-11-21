@@ -18,10 +18,10 @@ export class Cliente {
     telefono: string;
 
     @Column({ unique: true })
-    correo: string;
+    cte: string;
 
-    @Column({ default: false })
-    esMayoreo: boolean;
+    @Column()
+    negocio: string;
     
     @CreateDateColumn()
     createdAt: Date;
