@@ -1,28 +1,27 @@
-import { IsNotEmpty, IsNumber, IsEnum, IsBoolean, IsOptional } from 'class-validator';
+// create-cliente-ruta.dto.ts
+
+import { IsInt, IsEnum, IsBoolean, IsOptional, IsNumber } from 'class-validator';
 import { DiasSemana } from '../entities/cliente-ruta.entity';
 
 export class CreateClienteRutaDto {
-  @IsNumber()
-  @IsNotEmpty()
+  @IsInt()
   idCliente: number;
 
-  @IsNumber()
-  @IsNotEmpty()
+  @IsInt()
   rutaId: number;
 
-  @IsNumber()
-  @IsNotEmpty()
-  precioGarrafon: number;
+  // ✅ CAMBIAR DE precioGarrafon A precioId
+  @IsInt()
+  precioId: number; // ← Ya no es un decimal, es el ID del precio
 
-  @IsEnum(DiasSemana, { message: 'Día inválido. Opciones: Lunes - Jueves, Martes - Viernes...' })
-  @IsNotEmpty()
+  @IsEnum(DiasSemana)
   diaSemana: DiasSemana;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   esCredito?: boolean;
 
-  @IsBoolean()
   @IsOptional()
+  @IsBoolean()
   requiereFactura?: boolean;
 }

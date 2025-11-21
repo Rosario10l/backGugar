@@ -7,6 +7,7 @@ import { AuthModule } from 'src/auth/auth/auth.module';
 import { Usuario } from 'src/usuarios/entities/usuario.entity'; 
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 import { ClienteRuta } from './entities/cliente-ruta.entity';
+import { Precio } from 'src/precios/entities/precio.entity';
 
 
 @Module({
@@ -15,7 +16,8 @@ import { ClienteRuta } from './entities/cliente-ruta.entity';
       Ruta, 
       Usuario, 
       Cliente,
-      ClienteRuta
+      ClienteRuta,
+      Precio 
     ]),
     AuthModule, 
   ],

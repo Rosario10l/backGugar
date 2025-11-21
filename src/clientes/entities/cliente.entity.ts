@@ -1,7 +1,10 @@
+//cliente.entity.ts
+
 import { Direccione } from "src/direcciones/entities/direccione.entity";
 import { Pedido } from "src/pedidos/entities/pedido.entity";
-import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity"; 
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity";
+import { Precio } from "src/precios/entities/precio.entity"; // ← AGREGAR IMPORT
+import { Column, CreateDateColumn, Entity, OneToMany, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Cliente {
@@ -23,6 +26,12 @@ export class Cliente {
     @CreateDateColumn()
     createdAt: Date;
 
+    // ===== AGREGAR ESTA RELACIÓN =====
+    @ManyToOne(() => Precio, (precio) => precio.clientes)
+    @JoinColumn({ name: 'tipoPrecioId' })
+    tipoPrecio: Precio;
+    // =================================
+
     // RELACIÓN CON PEDIDOS
     @OneToMany(() => Pedido, (pedido) => pedido.cliente)
     pedidos: Pedido[];
@@ -31,8 +40,7 @@ export class Cliente {
     @OneToMany(() => Direccione, (direccion) => direccion.cliente)
     direcciones: Direccione[];
 
-    // --- CAMBIO AQUÍ ---
-    // Quitamos @ManyToMany. Ahora nos conectamos a la tabla intermedia.
+    // RELACIÓN CON RUTAS
     @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.cliente)
     clienteRutas: ClienteRuta[];
 }

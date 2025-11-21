@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 import { Ruta } from 'src/ruta/entities/ruta.entity';
+import { Precio } from 'src/precios/entities/precio.entity'; // ← AGREGAR IMPORT
 
 // Definimos un Enum para limitar los valores de días (como en tu SQL)
 export enum DiasSemana {
@@ -26,8 +27,14 @@ export class ClienteRuta {
 
   // --- COLUMNAS DE DATOS EXTRA ---
 
-  @Column({ name: 'precio_garrafon', type: 'decimal', precision: 10, scale: 2 })
-  precioGarrafon: number;
+  // ❌ ELIMINAR ESTA COLUMNA (ya no será un decimal, será una FK)
+  // @Column({ name: 'precio_garrafon', type: 'decimal', precision: 10, scale: 2 })
+  // precioGarrafon: number;
+
+  // ✅ AGREGAR RELACIÓN CON PRECIO
+  @ManyToOne(() => Precio, (precio) => precio.clientesRutas, { nullable: false })
+  @JoinColumn({ name: 'precio_id' }) // Esto crea la columna precio_id en la BD
+  precio: Precio;
 
   @Column({
     name: 'dia_semana',
