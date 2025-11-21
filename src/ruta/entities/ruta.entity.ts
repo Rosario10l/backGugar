@@ -1,14 +1,6 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
-  ManyToMany, 
-  JoinTable,
-  JoinColumn
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
-// import { Cliente } from 'src/clientes/entities/cliente.entity'; 
+import { ClienteRuta } from './cliente-ruta.entity'; 
 
 @Entity({ name: 'rutas' })
 export class Ruta {
@@ -22,18 +14,11 @@ export class Ruta {
   @Column({ type: 'varchar', length: 255, nullable: true })
   descripcion: string;
 
-  @ManyToOne(() => Usuario, (usuario) => usuario)// agregar rutas asignadas
+  @ManyToOne(() => Usuario, (usuario) => usuario)
   @JoinColumn({ name: 'idRepartidor' }) 
   repartidor: Usuario;
 
-  @Column() 
-  idRepartidor: number;
-
-  // @ManyToMany(() => Cliente, (cliente) => cliente.rutas)
-  // @JoinTable({
-  //   name: 'ruta_cliente', 
-  //   joinColumn: { name: 'idRuta' },
-  //   inverseJoinColumn: { name: 'idCliente' }
-  // })
-  // clientes: Cliente[];
+  // Relación con la tabla intermedia
+  @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.ruta)
+  rutaClientes: ClienteRuta[];
 }

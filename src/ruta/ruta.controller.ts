@@ -8,20 +8,27 @@ import {
   ParseIntPipe, 
   UseGuards
 } from '@nestjs/common';
-import { RutasService } from './ruta.service';
+import { RutasService } from './ruta.service'; // OJO: Verifica si es .ruta.service o .rutas.service
 import { CreateRutaDto } from './dto/create-ruta.dto';
-import { AuthGuard } from '@nestjs/passport'; // <-- Importamos el Guard
-// import { AddClienteRutaDto } from './dto/add-cliente-ruta.dto';
+import { AuthGuard } from '@nestjs/passport'; 
+
+// 1. IMPORTAR EL DTO QUE FALTABA
+import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto'; 
 
 @Controller('rutas')
-@UseGuards(AuthGuard()) // <-- ¡Todas estas rutas requieren un token JWT!
 export class RutasController {
   
   constructor(private readonly rutasService: RutasService) {}
 
   @Post()
   create(@Body() createRutaDto: CreateRutaDto) {
-    // return this.rutasService.create(createRutaDto);
+     return this.rutasService.create(createRutaDto);
+  }
+
+  // 2. AGREGAR ESTE MÉTODO QUE FALTABA
+  @Post('asignar-cliente')
+  asignarCliente(@Body() createClienteRutaDto: CreateClienteRutaDto) {
+    return this.rutasService.asignarCliente(createClienteRutaDto);
   }
 
   @Get()
@@ -34,15 +41,11 @@ export class RutasController {
     return this.rutasService.findOne(id);
   }
 
-
+  // Método viejo comentado (lo puedes borrar si quieres)
   @Post(':id/clientes')
-  addCliente(
-    @Param('id', ParseIntPipe) idRuta: number,
-    // @Body() addClienteDto: AddClienteRutaDto,
-  ) {
+  addCliente(@Param('id', ParseIntPipe) idRuta: number) {
     // return this.rutasService.addClienteToRuta(idRuta, addClienteDto);
   }
-
 
   @Delete(':id/clientes/:idCliente')
   removeCliente(
