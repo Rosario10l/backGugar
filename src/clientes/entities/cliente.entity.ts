@@ -12,7 +12,7 @@ export class Cliente {
     nombre:string
     @Column()
     telefono:string
-    @Column()
+    @Column({unique: true})
     cte:number
     @Column()
     negocio:string
