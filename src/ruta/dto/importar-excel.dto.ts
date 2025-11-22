@@ -1,10 +1,10 @@
-import { IsNotEmpty, IsString, IsArray, ValidateNested, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+// src/ruta/dto/importar-excel.dto.ts
+
+import { IsString, IsArray, ValidateNested, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// DTO para cada cliente del Excel
 export class ClienteExcelDto {
   @IsString()
-  @IsNotEmpty()
   numeroCliente: string;
 
   @IsString()
@@ -12,19 +12,15 @@ export class ClienteExcelDto {
   nombreNegocio?: string;
 
   @IsString()
-  @IsNotEmpty()
   representante: string;
 
   @IsString()
-  @IsNotEmpty()
   colonia: string;
 
   @IsString()
-  @IsNotEmpty()
   direccion: string;
 
   @IsString()
-  @IsNotEmpty()
   precioGarrafon: string;
 
   @IsBoolean()
@@ -36,16 +32,10 @@ export class ClienteExcelDto {
   requiereFactura?: boolean;
 
   @IsString()
-  @IsNotEmpty()
-  diasVisita: string;
+  diasVisita: string; // ej: "LJ", "MV", "IS"
 
   @IsString()
-  @IsNotEmpty()
   ordenVisita: string;
-
-  @IsString()
-  @IsNotEmpty()
-  supervisor: string;
 
   @IsNumber()
   @IsOptional()
@@ -54,13 +44,19 @@ export class ClienteExcelDto {
   @IsNumber()
   @IsOptional()
   longitud?: number;
+
+  @IsString()
+  @IsOptional()
+  codigoPostal?: string;
+
+  @IsString()
+  @IsOptional()
+  ciudad?: string;
 }
 
-// DTO principal para la importación
 export class ImportarExcelDto {
   @IsString()
-  @IsNotEmpty()
-  supervisor: string;
+  nombreRuta: string;
 
   @IsString()
   @IsOptional()
@@ -70,9 +66,4 @@ export class ImportarExcelDto {
   @ValidateNested({ each: true })
   @Type(() => ClienteExcelDto)
   clientes: ClienteExcelDto[];
-
-  @IsString()
-  @IsNotEmpty()
-  nombreRuta: string;
-
 }

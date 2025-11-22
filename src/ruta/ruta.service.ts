@@ -13,7 +13,7 @@ import { Direccione } from 'src/direcciones/entities/direccione.entity';
 import { CreateRutaDto } from './dto/create-ruta.dto';
 import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto';
 import { ImportarExcelDto, ClienteExcelDto } from './dto/importar-excel.dto';
-import { DiasSemana } from './entities/dia-ruta.entity'; // ← MOVER ENUM A dia-ruta.entity
+import { DiasSemana } from './entities/dia-ruta.entity';
 
 @Injectable()
 export class RutasService {
@@ -69,9 +69,9 @@ export class RutasService {
         'repartidor',
         'supervisor',
         'diasRuta',
-        'diasRuta.clienteRutas',
-        'diasRuta.clienteRutas.cliente',
-        'diasRuta.clienteRutas.precio'
+        'diasRuta.clientesRuta', // ← CORREGIDO
+        'diasRuta.clientesRuta.cliente', // ← CORREGIDO
+        'diasRuta.clientesRuta.precio' // ← CORREGIDO
       ]
     });
   }
@@ -83,9 +83,9 @@ export class RutasService {
         'repartidor',
         'supervisor',
         'diasRuta',
-        'diasRuta.clienteRutas',
-        'diasRuta.clienteRutas.cliente',
-        'diasRuta.clienteRutas.precio'
+        'diasRuta.clientesRuta', // ← CORREGIDO
+        'diasRuta.clientesRuta.cliente', // ← CORREGIDO
+        'diasRuta.clientesRuta.precio' // ← CORREGIDO
       ],
     });
 
@@ -96,9 +96,8 @@ export class RutasService {
   }
 
   async asignarCliente(datos: CreateClienteRutaDto) {
-    const { idCliente, diaRutaId, precioId, esCredito, requiereFactura } = datos; // ← CAMBIAR rutaId por diaRutaId
+    const { idCliente, diaRutaId, precioId, esCredito, requiereFactura } = datos;
 
-    // ← CAMBIAR: Buscar DiaRuta en lugar de Ruta
     const diaRuta = await this.diaRutaRepository.findOneBy({ id: diaRutaId });
     if (!diaRuta) throw new NotFoundException(`DiaRuta ${diaRutaId} no encontrada`);
 
@@ -108,11 +107,10 @@ export class RutasService {
     const precio = await this.precioRepository.findOneBy({ id: precioId });
     if (!precio) throw new NotFoundException(`Precio ${precioId} no encontrado`);
 
-    // ← CAMBIAR: Verificar si ya existe en este DiaRuta
     const existe = await this.clienteRutaRepository.findOne({
       where: {
         cliente: { id: idCliente },
-        diaRuta: { id: diaRutaId } // ← CAMBIO
+        diaRuta: { id: diaRutaId }
       }
     });
 
@@ -121,20 +119,20 @@ export class RutasService {
     }
 
     const nuevaAsignacion = this.clienteRutaRepository.create({
-      diaRuta: diaRuta, // ← CAMBIO
+      diaRuta: diaRuta,
       cliente: cliente,
       precio: precio,
-      esCredito: esCredito || false,
-      requiereFactura: requiereFactura || false
+      es_credito: esCredito || false,
+      requiere_factura: requiereFactura || false
     });
 
     return await this.clienteRutaRepository.save(nuevaAsignacion);
   }
 
-  async removeClienteFromRuta(idDiaRuta: number, idCliente: number) { // ← CAMBIAR nombre del parámetro
+  async removeClienteFromRuta(idDiaRuta: number, idCliente: number) {
     const relacion = await this.clienteRutaRepository.findOne({
       where: {
-        diaRuta: { id: idDiaRuta }, // ← CAMBIO
+        diaRuta: { id: idDiaRuta },
         cliente: { id: idCliente }
       }
     });
@@ -147,37 +145,22 @@ export class RutasService {
   }
 
   async importarDesdeExcel(importarDto: ImportarExcelDto) {
-    const { supervisor, fechaReporte, clientes, nombreRuta } = importarDto; // ← QUITAR lugarEntrega
+    const { fechaReporte, clientes, nombreRuta } = importarDto;
 
-    // 1. BUSCAR SUPERVISOR
-    let supervisorUsuario = await this.usuarioRepository.findOne({
-      where: { name: supervisor }
-    });
-
-    if (!supervisorUsuario) {
-      throw new NotFoundException(
-        `Supervisor/Repartidor "${supervisor}" no encontrado en la base de datos. Por favor créalo primero.`
-      );
-    }
-
-    if (supervisorUsuario.role !== 'repartidor') {
-      throw new BadRequestException(`El usuario "${supervisor}" no tiene rol de repartidor`);
-    }
-
-    // 2. CREAR LA RUTA PADRE (UNA SOLA VEZ)
+    // 1. CREAR LA RUTA PADRE SIN SUPERVISOR/REPARTIDOR (se asignarán después)
     const rutaPadre = this.rutaRepository.create({
       nombre: nombreRuta,
-      supervisor: supervisorUsuario, // ← Asignar supervisor
-      repartidor: supervisorUsuario, // ← Por ahora, el mismo usuario es repartidor también
+      supervisor: undefined,
+      repartidor: undefined,
       diasRuta: []
     });
 
     const rutaGuardada = await this.rutaRepository.save(rutaPadre);
 
-    // 3. AGRUPAR CLIENTES POR DÍAS
+    // 2. AGRUPAR CLIENTES POR DÍAS
     const clientesPorDia = this.agruparClientesPorDias(clientes);
 
-    // 4. CREAR UN DiaRuta POR CADA GRUPO DE DÍAS
+    // 3. CREAR UN DiaRuta POR CADA GRUPO DE DÍAS
     const diasRutaCreados: Array<{
       diaRuta: DiaRuta;
       clientesImportados: number;
@@ -185,26 +168,26 @@ export class RutasService {
     }> = [];
 
     for (const [diasKey, clientesDelDia] of Object.entries(clientesPorDia)) {
-      if (clientesDelDia.length === 0) continue; // ← Saltar si no hay clientes
+      if (clientesDelDia.length === 0) continue;
 
-      // Crear DiaRuta
+      // Crear DiaRuta - CORRECCIÓN: usar el objeto correcto
       const diaRuta = this.diaRutaRepository.create({
         nombre: `${nombreRuta} - ${diasKey}`,
         diaSemana: diasKey as DiasSemana,
         ruta: rutaGuardada,
-        clienteRutas: []
+        ruta_id: rutaGuardada.id
       });
 
       const diaRutaGuardado = await this.diaRutaRepository.save(diaRuta);
 
-      // 5. PROCESAR CADA CLIENTE DE ESTE DÍA
+      // 4. PROCESAR CADA CLIENTE DE ESTE DÍA
       const clientesRutaCreados: ClienteRuta[] = [];
 
       for (const clienteDto of clientesDelDia) {
         try {
           const clienteRutaCreado = await this.procesarClienteExcel(
             clienteDto,
-            diaRutaGuardado, // ← Ahora pasamos DiaRuta
+            diaRutaGuardado, // ← CORREGIDO: pasar el objeto guardado, no array
             diasKey
           );
           clientesRutaCreados.push(clienteRutaCreado);
@@ -214,7 +197,7 @@ export class RutasService {
       }
 
       diasRutaCreados.push({
-        diaRuta: diaRutaGuardado,
+        diaRuta: diaRutaGuardado, // ← CORREGIDO: objeto individual
         clientesImportados: clientesRutaCreados.length,
         totalClientes: clientesDelDia.length
       });
@@ -226,7 +209,6 @@ export class RutasService {
       ruta: rutaGuardada,
       diasRutaCreados: diasRutaCreados.length,
       detalles: diasRutaCreados,
-      supervisor: supervisor,
       fechaReporte: fechaReporte
     };
   }
@@ -273,7 +255,7 @@ export class RutasService {
 
   private async procesarClienteExcel(
     clienteDto: ClienteExcelDto,
-    diaRuta: DiaRuta, // ← CAMBIO: recibir DiaRuta
+    diaRuta: DiaRuta, // ← Tipo correcto
     diasRuta: string
   ): Promise<ClienteRuta> {
 
@@ -359,7 +341,7 @@ export class RutasService {
     const yaExiste = await this.clienteRutaRepository.findOne({
       where: {
         cliente: { id: cliente.id },
-        diaRuta: { id: diaRuta.id } // ← CAMBIO
+        diaRuta: { id: diaRuta.id }
       }
     });
 
@@ -372,10 +354,10 @@ export class RutasService {
 
     const clienteRuta = this.clienteRutaRepository.create({
       cliente: cliente,
-      diaRuta: diaRuta, // ← CAMBIO
+      diaRuta: diaRuta,
       precio: precio,
-      esCredito: esCredito,
-      requiereFactura: requiereFactura
+      es_credito: esCredito,
+      requiere_factura: requiereFactura
     });
 
     return await this.clienteRutaRepository.save(clienteRuta);
