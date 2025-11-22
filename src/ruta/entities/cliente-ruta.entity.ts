@@ -1,15 +1,16 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  ManyToOne, 
-  JoinColumn, 
-  CreateDateColumn, 
-  Unique 
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  Unique
 } from 'typeorm';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 import { Ruta } from 'src/ruta/entities/ruta.entity';
-import { Precio } from 'src/precios/entities/precio.entity'; // ← AGREGAR IMPORT
+import { DiaRuta } from './dia-ruta.entity';
+import { Precio } from 'src/precios/entities/precio.entity';
 
 // Definimos un Enum para limitar los valores de días (como en tu SQL)
 export enum DiasSemana {
@@ -19,29 +20,22 @@ export enum DiasSemana {
 }
 
 @Entity({ name: 'clientes_rutas' })
-@Unique(['cliente', 'ruta']) // Esto evita duplicados (UNIQUE KEY unique_cliente_ruta)
+@Unique(['cliente', 'diaRuta']) // Esto evita duplicados (UNIQUE KEY unique_cliente_ruta)
 export class ClienteRuta {
 
   @PrimaryGeneratedColumn()
   id: number;
 
-  // --- COLUMNAS DE DATOS EXTRA ---
-
-  // ❌ ELIMINAR ESTA COLUMNA (ya no será un decimal, será una FK)
-  // @Column({ name: 'precio_garrafon', type: 'decimal', precision: 10, scale: 2 })
-  // precioGarrafon: number;
-
-  // ✅ AGREGAR RELACIÓN CON PRECIO
   @ManyToOne(() => Precio, (precio) => precio.clientesRutas, { nullable: false })
   @JoinColumn({ name: 'precio_id' }) // Esto crea la columna precio_id en la BD
   precio: Precio;
 
-  @Column({
-    name: 'dia_semana',
-    type: 'enum',
-    enum: DiasSemana,
-  })
-  diaSemana: DiasSemana;
+  // @Column({
+  //   name: 'dia_semana',
+  //   type: 'enum',
+  //   enum: DiasSemana,
+  // })
+  // diaSemana: DiasSemana;
 
   @Column({ name: 'es_credito', type: 'boolean', default: false })
   esCredito: boolean;
@@ -58,7 +52,13 @@ export class ClienteRuta {
   @JoinColumn({ name: 'cliente_id' }) // Esto crea la columna cliente_id en la BD
   cliente: Cliente;
 
-  @ManyToOne(() => Ruta, (ruta) => ruta.rutaClientes)
-  @JoinColumn({ name: 'ruta_id' }) // Esto crea la columna ruta_id en la BD
-  ruta: Ruta;
+  // @ManyToOne(() => Ruta, (ruta) => ruta.rutaClientes)
+  // @JoinColumn({ name: 'ruta_id' }) // Esto crea la columna ruta_id en la BD
+  // ruta: Ruta;
+
+  @ManyToOne(() => DiaRuta, (diaRuta) => diaRuta.clienteRutas)
+  @JoinColumn({ name: 'dia_ruta_id' })
+  diaRuta: DiaRuta;
+
+
 }

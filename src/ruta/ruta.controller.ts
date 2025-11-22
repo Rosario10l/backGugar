@@ -1,22 +1,29 @@
-import { 
-  Controller, Get, Post, Body, Param, Delete, ParseIntPipe, 
+import {
+  Controller, Get, Post, Body, Param, Delete, ParseIntPipe,
   Patch
 } from '@nestjs/common';
 import { RutasService } from './ruta.service'; // OJO: Verifica si es .ruta.service o .rutas.service
 import { CreateRutaDto } from './dto/create-ruta.dto';
-import { AuthGuard } from '@nestjs/passport'; 
+import { AuthGuard } from '@nestjs/passport';
 
-// 1. IMPORTAR EL DTO QUE FALTABA
-import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto'; 
+import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto';
+import { ImportarExcelDto } from './dto/importar-excel.dto';
+
 
 @Controller('rutas')
 export class RutasController {
-  
-  constructor(private readonly rutasService: RutasService) {}
+
+  constructor(private readonly rutasService: RutasService) { }
+
+
+  @Post('importar-excel')
+  async importarDesdeExcel(@Body() importarDto: ImportarExcelDto) {
+    return this.rutasService.importarDesdeExcel(importarDto);
+  }
 
   @Post()
   create(@Body() createRutaDto: CreateRutaDto) {
-     return this.rutasService.create(createRutaDto);
+    return this.rutasService.create(createRutaDto);
   }
 
   // 2. AGREGAR ESTE MÉTODO QUE FALTABA

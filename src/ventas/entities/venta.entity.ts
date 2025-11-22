@@ -1,50 +1,45 @@
+// src/ventas/entities/venta.entity.ts
+
 import { Precio } from "src/precios/entities/precio.entity";
+import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity";
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Venta {
-     @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-     // RELACIÓN CORRECTA CON CLIENTE_RUTA
-   /* @ManyToOne(() => ClienteRuta)
-    @JoinColumn({ name: 'clienteRutaId' })
-    clienteRuta: ClienteRuta;  */
+  @ManyToOne(() => ClienteRuta, { nullable: false })
+  @JoinColumn({ name: 'cliente_ruta_id' })
+  clienteRuta: ClienteRuta;
 
-    @Column()
-    clienteRutaId: number;
+  @Column()
+  cantidadVendida: number;
 
-    @Column()
-    cantidadVendida: number;
+  @ManyToOne(() => Precio, { nullable: false })
+  @JoinColumn({ name: 'precio_id' })
+  precio: Precio;
 
-    // ELACIÓN CON PRECIO
-    @ManyToOne(() => Precio)
-    @JoinColumn({ name: 'precioId' })
-    precio: Precio;
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  total: number;
 
-    @Column()
-    precioId: number;
+  @Column({
+    type: 'enum',
+    enum: ['realizado', 'saltado', 'pendiente'],
+    default: 'pendiente'
+  })
+  estado: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    total: number;
+  @Column({ nullable: true })
+  motivoSalto: string;
 
-    @Column({
-        type: 'enum',
-        enum: ['realizado', 'saltado', 'pendiente'],
-        default: 'pendiente'
-    })
-    estado: string;
+  @CreateDateColumn()
+  fecha: Date;
 
-    @Column({ nullable: true })
-    motivoSalto: string;
-
-    @CreateDateColumn()
-    fecha: Date;
-
-    // Método para calcular el total automáticamente
-    calcularTotal(): void {
-        if (this.precio && this.cantidadVendida) {
-            this.total = this.cantidadVendida * this.precio.precioPorGarrafon;
-        }
+  // Método para calcular el total automáticamente
+  calcularTotal(): void {
+    if (this.precio && this.cantidadVendida) {
+      this.total = this.cantidadVendida * this.precio.precioPorGarrafon;
     }
+  }
 }

@@ -12,7 +12,7 @@ export class Cliente {
     id: number;
 
     @Column()
-    nombre: string;
+    representante: string;
 
     @Column()
     telefono: string;
