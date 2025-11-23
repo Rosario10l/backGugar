@@ -57,7 +57,7 @@ export class RutasService {
     const nuevaRuta = this.rutaRepository.create({
       ...rutaData,
       repartidor: repartidor,
-      diasRuta: [], 
+      diasRuta: [],
     });
 
     return await this.rutaRepository.save(nuevaRuta);
@@ -145,13 +145,29 @@ export class RutasService {
   }
 
   async importarDesdeExcel(importarDto: ImportarExcelDto) {
-    const { fechaReporte, clientes, nombreRuta } = importarDto;
+    const { fechaReporte, clientes, nombreRuta, supervisorId, repartidorId } = importarDto;
 
-    // 1. CREAR LA RUTA PADRE SIN SUPERVISOR/REPARTIDOR (se asignarán después)
+    // 1. BUSCAR SUPERVISOR Y REPARTIDOR (SI VIENEN)
+    let supervisorUsuario: Usuario | null = null;
+    let repartidorUsuario: Usuario | null = null;
+
+    if (supervisorId) {
+      supervisorUsuario = await this.usuarioRepository.findOne({
+        where: { id: supervisorId }
+      });
+    }
+
+    if (repartidorId) {
+      repartidorUsuario = await this.usuarioRepository.findOne({
+        where: { id: repartidorId }
+      });
+    }
+
+    // 2. CREAR LA RUTA PADRE CON SUPERVISOR/REPARTIDOR OPCIONALES
     const rutaPadre = this.rutaRepository.create({
       nombre: nombreRuta,
-      supervisor: undefined,
-      repartidor: undefined,
+      supervisor: supervisorUsuario || undefined,
+      repartidor: repartidorUsuario || undefined,
       diasRuta: []
     });
 
@@ -230,12 +246,14 @@ export class RutasService {
       'IS': 'Miercoles - Sábado',
       'MIE': 'Miercoles - Sábado',
       'SAB': 'Miercoles - Sábado',
-      'DOM': 'Miercoles - Sábado'
     };
 
     clientes.forEach(cliente => {
+      console.log('🔍 Cliente:', cliente.numeroCliente, 'diasVisita:', cliente.diasVisita);
       const visUpper = cliente.diasVisita.toUpperCase().trim();
       const diaRuta = diasMap[visUpper] || 'Miercoles - Sábado';
+
+      //  const diaRuta = cliente.diasVisita;
 
       if (grupos[diaRuta]) {
         grupos[diaRuta].push(cliente);
@@ -362,4 +380,133 @@ export class RutasService {
 
     return await this.clienteRutaRepository.save(clienteRuta);
   }
+
+/**
+ * OBTENER RUTAS AGRUPADAS POR ESTADO
+ */
+async getRutasPorEstado(estado?: string) {
+  const query = this.rutaRepository
+    .createQueryBuilder('ruta')
+    .leftJoinAndSelect('ruta.supervisor', 'supervisor')
+    .leftJoinAndSelect('ruta.repartidor', 'repartidor')
+    .leftJoinAndSelect('ruta.diasRuta', 'diasRuta')
+    .leftJoinAndSelect('diasRuta.clientesRuta', 'clientesRuta');
+
+  if (estado) {
+    query.where('diasRuta.estado = :estado', { estado });
+  }
+
+  return query.getMany();
+}
+
+/**
+ * OBTENER DÍAS DE RUTA POR ESTADO
+ */
+async getDiasRutaPorEstado(estado: string) {
+  return this.diaRutaRepository.find({
+    where: { estado: estado as any },
+    relations: [
+      'ruta',
+      'ruta.supervisor',
+      'ruta.repartidor',
+      'clientesRuta',
+      'clientesRuta.cliente'
+    ]
+  });
+}
+
+/**
+ * ASIGNAR PERSONAL A UNA RUTA
+ */
+async asignarPersonalARuta(
+  rutaId: number,
+  dto: { supervisorId?: number; repartidorId?: number }
+) {
+  const ruta = await this.rutaRepository.findOne({ where: { id: rutaId } });
+
+  if (!ruta) {
+    throw new NotFoundException(`Ruta ${rutaId} no encontrada`);
+  }
+
+  if (dto.supervisorId) {
+    const supervisor = await this.usuarioRepository.findOne({
+      where: { id: dto.supervisorId }
+    });
+    if (supervisor) {
+      ruta.supervisor = supervisor;
+      ruta.supervisor_id = dto.supervisorId;
+    }
+  }
+
+  if (dto.repartidorId) {
+    const repartidor = await this.usuarioRepository.findOne({
+      where: { id: dto.repartidorId }
+    });
+    if (repartidor) {
+      ruta.repartidor = repartidor;
+      ruta.idRepartidor = dto.repartidorId;
+    }
+  }
+
+  await this.rutaRepository.save(ruta);
+
+  return {
+    success: true,
+    message: 'Personal asignado correctamente',
+    ruta
+  };
+}
+
+async remove(id: number) {
+  const ruta = await this.rutaRepository.findOne({ 
+    where: { id },
+    relations: ['diasRuta', 'diasRuta.clientesRuta']
+  });
+
+  if (!ruta) {
+    throw new NotFoundException(`Ruta ${id} no encontrada`);
+  }
+
+  await this.rutaRepository.remove(ruta);
+
+  return {
+    success: true,
+    message: 'Ruta eliminada correctamente'
+  };
+}
+
+
+/**
+ * CAMBIAR ESTADO DE UN DÍA DE RUTA
+ */
+async cambiarEstadoDiaRuta(diaRutaId: number, nuevoEstado: string) {
+  const diaRuta = await this.diaRutaRepository.findOne({
+    where: { id: diaRutaId }
+  });
+
+  if (!diaRuta) {
+    throw new NotFoundException(`DiaRuta ${diaRutaId} no encontrado`);
+  }
+
+  diaRuta.estado = nuevoEstado as any;
+
+  // Si cambia a EN_CURSO, registrar fecha de inicio
+  if (nuevoEstado === 'en_curso' && !diaRuta.fechaInicio) {
+    diaRuta.fechaInicio = new Date();
+  }
+
+  // Si cambia a COMPLETADA, registrar fecha de finalización
+  if (nuevoEstado === 'completada' && !diaRuta.fechaFinalizacion) {
+    diaRuta.fechaFinalizacion = new Date();
+  }
+
+  await this.diaRutaRepository.save(diaRuta);
+
+  return {
+    success: true,
+    message: 'Estado actualizado',
+    diaRuta
+  };
+}
+
 }

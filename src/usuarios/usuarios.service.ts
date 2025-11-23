@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Usuario } from './entities/usuario.entity';
 import { DeleteResult, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Role } from "src/auth/enums/role.enum";
 
 @Injectable()
 export class UsuariosService {
@@ -49,6 +50,13 @@ export class UsuariosService {
     const usuario = await this.usuarioRepository.findOneBy({ id });
     if (!usuario) throw new NotFoundException('Usuario no encontrado');
     return usuario;
+  }
+
+    async findByRole(role: Role) {
+    return this.usuarioRepository.find({
+      where: { role },
+      select: ['id', 'name', 'role', 'email']
+    });
   }
 
   async update(

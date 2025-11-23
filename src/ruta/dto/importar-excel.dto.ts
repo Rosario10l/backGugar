@@ -62,6 +62,14 @@ export class ImportarExcelDto {
   @IsOptional()
   fechaReporte?: string;
 
+  @IsNumber()
+  @IsOptional()
+  supervisorId?: number;
+
+  @IsNumber()
+  @IsOptional()
+  repartidorId?: number;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ClienteExcelDto)
