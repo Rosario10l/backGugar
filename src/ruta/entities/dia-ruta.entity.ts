@@ -50,6 +50,15 @@ export class DiaRuta {
   @Column()
   ruta_id: number;
 
+  @Column({ nullable: true })
+  subRutaLetra?: string; // 'A', 'B', 'C' para dividir
+  
+  @Column({ default: false })
+  esDivision: boolean; // Indica si es una división
+  
+  @Column({ nullable: true })
+  diaRutaPadreId?: number; // Si es división, referencia al original
+
   @ManyToOne(() => Ruta, (ruta) => ruta.diasRuta, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'ruta_id' })
   ruta: Ruta;
