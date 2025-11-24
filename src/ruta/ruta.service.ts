@@ -76,24 +76,69 @@ export class RutasService {
     });
   }
 
-  async findOne(id: number): Promise<Ruta> {
-    const ruta = await this.rutaRepository.findOne({
-      where: { id: id },
-      relations: [
-        'repartidor',
-        'supervisor',
-        'diasRuta',
-        'diasRuta.clientesRuta', // ← CORREGIDO
-        'diasRuta.clientesRuta.cliente', // ← CORREGIDO
-        'diasRuta.clientesRuta.precio' // ← CORREGIDO
-      ],
-    });
 
-    if (!ruta) {
-      throw new NotFoundException(`Ruta con ID ${id} no encontrada`);
-    }
-    return ruta;
+async actualizarRuta(id: number, data: any) {
+  const ruta = await this.rutaRepository.findOne({ 
+    where: { id },
+    relations: ['supervisor', 'repartidor']
+  });
+  
+  if (!ruta) {
+    throw new NotFoundException('Ruta no encontrada');
   }
+
+  // Actualizar nombre
+  if (data.nombre) {
+    ruta.nombre = data.nombre;
+  }
+
+  // Actualizar supervisor
+  if (data.idSupervisor !== undefined) {
+    if (data.idSupervisor === null) {
+      ruta.supervisor = undefined;
+      ruta.supervisor_id = undefined;
+    } else {
+      const supervisor = await this.usuarioRepository.findOne({
+        where: { id: data.idSupervisor }
+      });
+      if (supervisor) {
+        ruta.supervisor = supervisor;
+        ruta.supervisor_id = data.idSupervisor;
+      }
+    }
+  }
+
+  // Actualizar repartidor
+  if (data.idRepartidor !== undefined) {
+    if (data.idRepartidor === null) {
+      ruta.repartidor = undefined;
+      ruta.idRepartidor = undefined;
+    } else {
+      const repartidor = await this.usuarioRepository.findOne({
+        where: { id: data.idRepartidor }
+      });
+      if (repartidor) {
+        ruta.repartidor = repartidor;
+        ruta.idRepartidor = data.idRepartidor;
+      }
+    }
+  }
+
+  return await this.rutaRepository.save(ruta);
+}
+
+async findOne(id: number, options?: any) {
+  const ruta = await this.rutaRepository.findOne({
+    where: { id },
+    ...options
+  });
+
+  if (!ruta) {
+    throw new NotFoundException(`Ruta con id ${id} no encontrada`);
+  }
+
+  return ruta;
+}
 
   async asignarCliente(datos: CreateClienteRutaDto) {
     const { idCliente, diaRutaId, precioId, esCredito, requiereFactura } = datos;

@@ -1,5 +1,6 @@
 import {
-  Controller, Get, Post, Body, Param, Delete, ParseIntPipe, Patch
+  Controller, Get, Post, Body, Param, Delete, ParseIntPipe, Patch,
+  Put
 } from '@nestjs/common';
 import { RutasService } from './ruta.service';
 import { CreateRutaDto } from './dto/create-ruta.dto';
@@ -35,9 +36,20 @@ export class RutasController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.rutasService.findOne(id);
+  async obtenerRutaPorId(@Param('id') id: number) {
+    return this.rutasService.findOne(id, {
+      relations: [
+        'supervisor',
+        'repartidor',
+        'diasRuta',
+        'diasRuta.clientesRuta',
+        'diasRuta.clientesRuta.cliente',
+        'diasRuta.clientesRuta.cliente.direcciones',
+        'diasRuta.clientesRuta.precio'
+      ]
+    });
   }
+
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
@@ -141,6 +153,16 @@ export class RutasController {
   @Post('dia-ruta/:id/pausar')
   pausarDiaRuta(@Param('id', ParseIntPipe) id: number) {
     return this.rutasService.cambiarEstadoDiaRuta(id, 'pausada');
+  }
+
+
+
+  @Put(':id')
+  async actualizarRuta(
+    @Param('id') id: number,
+    @Body() updateRutaDto: any
+  ) {
+    return this.rutasService.actualizarRuta(id, updateRutaDto);
   }
 
 }
