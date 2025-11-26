@@ -7,7 +7,6 @@ export class CreatePrecioDto {
         tipoCompra:string
 
         @IsNotEmpty()
-        @Length(3,20)
         @IsNumber()
         precioPorGarrafon:number
 }
