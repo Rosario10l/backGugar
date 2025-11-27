@@ -13,8 +13,7 @@ export class Precio {
         @Column({ type: 'decimal', precision: 10, scale: 2 })
         precioPorGarrafon: number;
     
-        @CreateDateColumn()
-        fechaVigencia: Date;
+        
 
         // RELACIÓN CON CLIENTES
         @OneToMany(() => Cliente, (cliente) => cliente.tipoPrecio)
