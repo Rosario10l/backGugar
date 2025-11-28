@@ -11,6 +11,7 @@ export class Cliente {
     @PrimaryGeneratedColumn()
     id: number;
 
+    // ... (Tus campos de nombre, teléfono, correo, etc. déjalos igual) ...
     @Column()
     representante: string;
 

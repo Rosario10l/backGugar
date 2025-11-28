@@ -1,4 +1,7 @@
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateClienteDto } from './create-cliente.dto';
 import { IsEmail, IsNotEmpty, IsNumber, IsString, Length, MaxLength } from "class-validator";
+
 
 export class UpdateClienteDto {
         @IsNotEmpty()

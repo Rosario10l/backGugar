@@ -7,7 +7,6 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { RutasModule } from './ruta/ruta.module';
 import { AuthModule } from './auth/auth/auth.module';
 
-import { DireccionesModule } from './direcciones/direcciones.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { PreciosModule } from './precios/precios.module';
@@ -30,7 +29,7 @@ import { VentasModule } from './ventas/ventas.module';
     RutasModule,
     AuthModule,
 
-    DireccionesModule,
+    
     PedidosModule,
     ClientesModule,
     PreciosModule,
