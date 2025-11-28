@@ -12,10 +12,13 @@ export class CreateClienteDto {
     @MaxLength(15)
     telefono: string;
 
-    @IsString()
+    @IsNumber()
     @IsNotEmpty()
-    @IsEmail()
-    correo: string;
+    cte:number
+
+    
+    @IsString()
+    negocio:string
 
     // --- RELACIÓN PRECIO (Esto se queda igual) ---
     @IsNotEmpty()

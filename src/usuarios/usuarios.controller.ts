@@ -11,23 +11,35 @@ import {
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
+import { Role } from "src/auth/enums/role.enum";
+
 
 @Controller('usuarios')
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) {}
+  constructor(private readonly usuariosService: UsuariosService) { }
   @Post()
   create(@Body() createUsuarioDto: CreateUsuarioDto) {
     return this.usuariosService.create(createUsuarioDto);
   }
 
-  @Get()
-  findAll() {
-    return this.usuariosService.findAll();
+  @Get('supervisores')
+  getSupervisores() {
+    return this.usuariosService.findByRole('supervisor' as Role);
   }
 
+  @Get('repartidores')
+  getRepartidores() {
+    return this.usuariosService.findByRole('repartidor' as Role);
+  }
+  
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.findOne(id);
+  }
+  
+  @Get()
+  findAll() {
+    return this.usuariosService.findAll();
   }
 
   @Patch(':id')

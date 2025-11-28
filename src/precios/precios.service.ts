@@ -12,14 +12,28 @@ export class PreciosService {
   private precioRepo: Repository<Precio>){ }
 
 
-  async createPrecio(CreatePrecioDto: CreatePrecioDto) {
-    try {
-      const newPrecio = this.precioRepo.create(CreatePrecioDto);
-      await this.precioRepo.save(newPrecio);
-      return newPrecio;
-    } catch (error) {
-      throw new InternalServerErrorException('Error al crear el precio');
+  async existePrecio(precioPorGarrafon: number): Promise<boolean> {
+    const precio = await this.precioRepo.findOne({
+      where: { precioPorGarrafon }
+    });
+    return !!precio;
+  }
+
+  async create(createPrecioDto: CreatePrecioDto) {
+    // Verificar si ya existe
+    const existe = await this.existePrecio(createPrecioDto.precioPorGarrafon);
+    
+    if (existe) {
+      throw new Error(`El precio $${createPrecioDto.precioPorGarrafon} ya existe`);
     }
+
+    const nuevoPrecio = this.precioRepo.create({
+      precioPorGarrafon: createPrecioDto.precioPorGarrafon,
+      tipoCompra: createPrecioDto.tipoCompra,
+      fechaVigencia: new Date() // Fecha actual por defecto
+    });
+
+    return this.precioRepo.save(nuevoPrecio);
   }
 
     async findAll() {

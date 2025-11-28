@@ -1,29 +1,56 @@
-import { Usuario } from 'src/usuarios/entities/usuario.entity';
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
+import { DiaRuta } from './dia-ruta.entity';
 
-@Entity()
+export enum EstadoRuta {
+  IMPORTADA = 'importada',      // Recién importada del Excel
+  ASIGNADA = 'asignada',        // Ya tiene supervisor/repartidor
+  ACTIVA = 'activa',            // En operación
+  FINALIZADA = 'finalizada',    // Completada
+  CANCELADA = 'cancelada'       // Cancelada
+}
+
+@Entity('ruta')
 export class Ruta {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   nombre: string;
 
-  @Column()
-  lugarEntrega: string;
+  // @Column({
+  //   type: 'enum',
+  //   enum: EstadoRuta,
+  //   default: EstadoRuta.IMPORTADA
+  // })
+  // estado: EstadoRuta;
 
-  @Column('int')
-  cantidad: number;
+  // Supervisor y repartidor ahora son OPCIONALES (nullable)
+  @Column({ nullable: true })
+  idRepartidor?: number;
 
   @Column({ nullable: true })
-  acciones: string;
+  supervisor_id?: number;
 
-  // Guardamos las coordenadas como JSON para no complicarnos con tablas extra
-  // Si usas Postgres usa 'jsonb', si es MySQL usa 'json' o 'simple-json'
-  @Column('simple-json') 
-  coordenadas: any[]; 
+  // // Metadatos de importación
+  // @Column({ type: 'varchar', length: 255, nullable: true })
+  // fechaReporte?: string; // Fecha del Excel
 
-  // Relación: Una ruta pertenece a Un Repartidor (Usuario)
-  @ManyToOne(() => Usuario, (usuario) => usuario.id, { eager: true })
-  repartidor: Usuario;
+  // @Column({ type: 'varchar', length: 255, nullable: true })
+  // importadoPor?: string; // Usuario que importó
+
+  // @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  // fechaImportacion: Date;
+
+  // Relaciones
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'idRepartidor' })
+  repartidor?: Usuario;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'supervisor_id' })
+  supervisor?: Usuario;
+
+  @OneToMany(() => DiaRuta, (diaRuta) => diaRuta.ruta, { cascade: true })
+  diasRuta: DiaRuta[];
 }
