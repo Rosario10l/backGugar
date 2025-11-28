@@ -63,6 +63,9 @@ export class DiaRuta {
   @JoinColumn({ name: 'ruta_id' })
   ruta: Ruta;
 
-  @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.diaRuta)
+  @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.diaRuta, { 
+    cascade: true,
+    onDelete: 'CASCADE'
+  })
   clientesRuta: ClienteRuta[];
 }

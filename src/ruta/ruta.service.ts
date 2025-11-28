@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 
 import { Ruta } from './entities/ruta.entity';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
@@ -69,9 +69,9 @@ export class RutasService {
         'repartidor',
         'supervisor',
         'diasRuta',
-        'diasRuta.clientesRuta', // ← CORREGIDO
-        'diasRuta.clientesRuta.cliente', // ← CORREGIDO
-        'diasRuta.clientesRuta.precio' // ← CORREGIDO
+        'diasRuta.clientesRuta',
+        'diasRuta.clientesRuta.cliente',
+        'diasRuta.clientesRuta.precio'
       ]
     });
   }
@@ -231,7 +231,7 @@ async findOne(id: number, options?: any) {
     for (const [diasKey, clientesDelDia] of Object.entries(clientesPorDia)) {
       if (clientesDelDia.length === 0) continue;
 
-      // Crear DiaRuta - CORRECCIÓN: usar el objeto correcto
+      // Crear DiaRuta
       const diaRuta = this.diaRutaRepository.create({
         nombre: `${nombreRuta} - ${diasKey}`,
         diaSemana: diasKey as DiasSemana,
@@ -248,7 +248,7 @@ async findOne(id: number, options?: any) {
         try {
           const clienteRutaCreado = await this.procesarClienteExcel(
             clienteDto,
-            diaRutaGuardado, // ← CORREGIDO: pasar el objeto guardado, no array
+            diaRutaGuardado,
             diasKey
           );
           clientesRutaCreados.push(clienteRutaCreado);
@@ -258,7 +258,7 @@ async findOne(id: number, options?: any) {
       }
 
       diasRutaCreados.push({
-        diaRuta: diaRutaGuardado, // ← CORREGIDO: objeto individual
+        diaRuta: diaRutaGuardado,
         clientesImportados: clientesRutaCreados.length,
         totalClientes: clientesDelDia.length
       });
@@ -298,8 +298,6 @@ async findOne(id: number, options?: any) {
       const visUpper = cliente.diasVisita.toUpperCase().trim();
       const diaRuta = diasMap[visUpper] || 'Miercoles - Sábado';
 
-      //  const diaRuta = cliente.diasVisita;
-
       if (grupos[diaRuta]) {
         grupos[diaRuta].push(cliente);
       }
@@ -318,7 +316,7 @@ async findOne(id: number, options?: any) {
 
   private async procesarClienteExcel(
     clienteDto: ClienteExcelDto,
-    diaRuta: DiaRuta, // ← Tipo correcto
+    diaRuta: DiaRuta,
     diasRuta: string
   ): Promise<ClienteRuta> {
 
@@ -502,7 +500,16 @@ async asignarPersonalARuta(
   };
 }
 
+/**
+ * ELIMINAR RUTA CON TODO Y CLIENTES
+ * 
+ * Este método elimina:
+ * 1. Todos los ClienteRuta asociados a cada DiaRuta
+ * 2. Todos los DiaRuta de la Ruta
+ * 3. La Ruta principal
+ */
 async remove(id: number) {
+  // 1. Buscar la ruta con todas sus relaciones
   const ruta = await this.rutaRepository.findOne({ 
     where: { id },
     relations: ['diasRuta', 'diasRuta.clientesRuta']
@@ -512,14 +519,37 @@ async remove(id: number) {
     throw new NotFoundException(`Ruta ${id} no encontrada`);
   }
 
+  // 2. Contadores para el reporte
+  let totalClientesEliminados = 0;
+  let totalDiasEliminados = 0;
+
+  // 3. Eliminar en cascada manualmente (para tener control)
+  for (const diaRuta of ruta.diasRuta) {
+    // 3.1 Eliminar todos los ClienteRuta de este DiaRuta
+    if (diaRuta.clientesRuta && diaRuta.clientesRuta.length > 0) {
+      await this.clienteRutaRepository.remove(diaRuta.clientesRuta);
+      totalClientesEliminados += diaRuta.clientesRuta.length;
+    }
+
+    // 3.2 Eliminar el DiaRuta
+    await this.diaRutaRepository.remove(diaRuta);
+    totalDiasEliminados++;
+  }
+
+  // 4. Eliminar la Ruta principal
   await this.rutaRepository.remove(ruta);
 
   return {
     success: true,
-    message: 'Ruta eliminada correctamente'
+    message: 'Ruta eliminada correctamente',
+    detalles: {
+      rutaId: id,
+      rutaNombre: ruta.nombre,
+      diasEliminados: totalDiasEliminados,
+      clientesEliminados: totalClientesEliminados
+    }
   };
 }
-
 
 /**
  * CAMBIAR ESTADO DE UN DÍA DE RUTA
@@ -553,5 +583,196 @@ async cambiarEstadoDiaRuta(diaRutaId: number, nuevoEstado: string) {
     diaRuta
   };
 }
+
+
+/**
+ * Crear una nueva ruta con su primer día de ruta
+ */
+async crearRutaConDia(data: {
+    nombre: string;
+    supervisorId: number | null;
+    repartidorId: number | null;
+    diaSemana: string;
+    clientesIds: number[];
+  }) {
+    const { nombre, supervisorId, repartidorId, diaSemana, clientesIds } = data;
+
+    let supervisor: Usuario | null = null;
+    let repartidor: Usuario | null = null;
+
+    if (supervisorId) {
+      supervisor = await this.usuarioRepository.findOne({
+        where: { id: supervisorId }
+      });
+    }
+
+    if (repartidorId) {
+      repartidor = await this.usuarioRepository.findOne({
+        where: { id: repartidorId }
+      });
+    }
+
+    const nuevaRuta = this.rutaRepository.create({
+      nombre: nombre.toUpperCase(),
+      supervisor: supervisor || undefined,
+      repartidor: repartidor || undefined,
+      diasRuta: []
+    });
+
+    const rutaGuardada = await this.rutaRepository.save(nuevaRuta);
+
+    const diaRuta = this.diaRutaRepository.create({
+      nombre: `${nombre} - ${diaSemana}`,
+      diaSemana: diaSemana as any,
+      ruta: rutaGuardada,
+      ruta_id: rutaGuardada.id
+    });
+
+    const diaRutaGuardado = await this.diaRutaRepository.save(diaRuta);
+
+    const clientesAsignados: ClienteRuta[] = [];
+    
+    for (const clienteId of clientesIds) {
+      const cliente = await this.clienteRepository.findOne({
+        where: { id: clienteId },
+        relations: ['tipoPrecio']
+      });
+
+      if (!cliente) continue;
+
+      const clienteRuta = this.clienteRutaRepository.create({
+        cliente: cliente,
+        diaRuta: diaRutaGuardado,
+        precio: cliente.tipoPrecio || undefined,
+        es_credito: false,
+        requiere_factura: false
+      });
+
+      const clienteRutaGuardado = await this.clienteRutaRepository.save(clienteRuta);
+      clientesAsignados.push(clienteRutaGuardado);
+    }
+
+    return {
+      success: true,
+      message: 'Ruta creada con día de visita y clientes',
+      ruta: rutaGuardada,
+      diaRuta: diaRutaGuardado,
+      clientesAsignados: clientesAsignados.length
+    };
+  }
+
+/**
+ * Agregar un día de ruta a una ruta existente
+ */
+async agregarDiaARuta(data: {
+    rutaId: number;
+    diaSemana: string;
+    clientesIds: number[];
+  }) {
+    const { rutaId, diaSemana, clientesIds } = data;
+
+    const ruta = await this.rutaRepository.findOne({
+      where: { id: rutaId },
+      relations: ['diasRuta']
+    });
+
+    if (!ruta) {
+      throw new NotFoundException(`Ruta ${rutaId} no encontrada`);
+    }
+
+    const diaExistente = ruta.diasRuta?.find(
+      dr => dr.diaSemana === diaSemana
+    );
+
+    if (diaExistente) {
+      throw new BadRequestException(
+        `La ruta "${ruta.nombre}" ya tiene el día ${diaSemana}`
+      );
+    }
+
+    const diaRuta = this.diaRutaRepository.create({
+      nombre: `${ruta.nombre} - ${diaSemana}`,
+      diaSemana: diaSemana as any,
+      ruta: ruta,
+      ruta_id: rutaId
+    });
+
+    const diaRutaGuardado = await this.diaRutaRepository.save(diaRuta);
+
+    const clientesAsignados: ClienteRuta[] = [];
+    
+    for (const clienteId of clientesIds) {
+      const cliente = await this.clienteRepository.findOne({
+        where: { id: clienteId },
+        relations: ['tipoPrecio']
+      });
+
+      if (!cliente) continue;
+
+      const clienteRuta = this.clienteRutaRepository.create({
+        cliente: cliente,
+        diaRuta: diaRutaGuardado,
+        precio: cliente.tipoPrecio || undefined,
+        es_credito: false,
+        requiere_factura: false
+      });
+
+      const clienteRutaGuardado = await this.clienteRutaRepository.save(clienteRuta);
+      clientesAsignados.push(clienteRutaGuardado);
+    }
+
+    return {
+      success: true,
+      message: `Día de ruta ${diaSemana} agregado con ${clientesAsignados.length} clientes`,
+      diaRuta: diaRutaGuardado,
+      clientesAsignados: clientesAsignados.length
+    };
+  }
+
+
+ async obtenerClientesDisponibles(diaRutaId?: number) {
+    if (diaRutaId) {
+      const clientesEnEseDia = await this.clienteRutaRepository
+        .createQueryBuilder('cr')
+        .select('cr.cliente_id')
+        .where('cr.dia_ruta_id = :diaRutaId', { diaRutaId })
+        .getRawMany();
+      
+      const idsExcluir = clientesEnEseDia.map(c => c.cliente_id);
+      
+      if (idsExcluir.length > 0) {
+        return this.clienteRepository.find({
+          where: { id: Not(In(idsExcluir)) },
+          relations: ['direcciones', 'tipoPrecio'],
+          order: { representante: 'ASC' }
+        });
+      }
+      
+      return this.clienteRepository.find({
+        relations: ['direcciones', 'tipoPrecio'],
+        order: { representante: 'ASC' }
+      });
+    } else {
+      const clientesConRuta = await this.clienteRutaRepository
+        .createQueryBuilder('clienteRuta')
+        .select('DISTINCT clienteRuta.cliente_id')
+        .getRawMany();
+
+      const idsConRuta = clientesConRuta.map(cr => cr.cliente_id);
+
+      if (idsConRuta.length > 0) {
+        return this.clienteRepository.find({
+          where: { id: Not(In(idsConRuta)) },
+          relations: ['direcciones', 'tipoPrecio'],
+          order: { representante: 'ASC' }
+        });
+      }
+
+      return this.clienteRepository.find({
+        relations: ['direcciones', 'tipoPrecio'],
+        order: { representante: 'ASC' }
+      });
+    }
+  }
 
 }
