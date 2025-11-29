@@ -1,28 +1,24 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateClienteDto } from './create-cliente.dto';
-import { IsEmail, IsNotEmpty, IsNumber, IsString, Length, MaxLength } from "class-validator";
-
+import { IsNumber, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class UpdateClienteDto {
-        @IsNotEmpty()
-        @Length(3,20)
+        @IsOptional()
         @IsString()
-        nombre:string
-    
-        @IsNotEmpty()
+        representante?: string;
+
+        @IsOptional()
         @IsString()
         @MaxLength(15)
-        telefono: string;
-    
-        @IsNumber()
-        @IsNotEmpty()
-        cte:number
+        telefono?: string;
 
-        @IsNotEmpty()
+        @IsOptional()
+        @IsNumber()
+        cte?: number;
+
+        @IsOptional()
         @IsString()
-        negocio:string
+        negocio?: string;
 
-        @IsNotEmpty()
+        @IsOptional()
         @IsNumber()
-        tipoPrecioId: number;
+        tipoPrecioId?: number;
 }

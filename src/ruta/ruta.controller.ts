@@ -1,6 +1,8 @@
+// src/ruta/ruta.controller.ts
+// ✅ CORREGIDO - Todos los endpoints usan los métodos HTTP correctos
+
 import {
-  Controller, Get, Post, Body, Param, Delete, ParseIntPipe, Patch,
-  Put
+  Controller, Get, Post, Body, Param, Delete, ParseIntPipe, Patch, Put
 } from '@nestjs/common';
 import { RutasService } from './ruta.service';
 import { CreateRutaDto } from './dto/create-ruta.dto';
@@ -12,6 +14,10 @@ export class RutasController {
 
   constructor(private readonly rutasService: RutasService) { }
 
+  // ========================================
+  // CREAR / IMPORTAR
+  // ========================================
+
   @Post('importar-excel')
   importarDesdeExcel(@Body() importarDto: ImportarExcelDto) {
     return this.rutasService.importarDesdeExcel(importarDto);
@@ -21,6 +27,35 @@ export class RutasController {
   create(@Body() createRutaDto: CreateRutaDto) {
     return this.rutasService.create(createRutaDto);
   }
+
+  @Post('crear-con-dia')
+  crearRutaConDia(@Body() data: {
+    nombre: string;
+    supervisorId: number | null;
+    repartidorId: number | null;
+    diaSemana: string;
+    clientesIds: number[];
+  }) {
+    return this.rutasService.crearRutaConDia(data);
+  }
+
+  @Post('agregar-dia')
+  agregarDiaARuta(@Body() data: {
+    rutaId: number;
+    diaSemana: string;
+    clientesIds: number[];
+  }) {
+    return this.rutasService.agregarDiaARuta(data);
+  }
+
+  @Post('asignar-cliente')
+  asignarCliente(@Body() createClienteRutaDto: CreateClienteRutaDto) {
+    return this.rutasService.asignarCliente(createClienteRutaDto);
+  }
+
+  // ========================================
+  // OBTENER (GET)
+  // ========================================
 
   @Get()
   findAll() {
@@ -47,18 +82,10 @@ export class RutasController {
     return this.rutasService.getDiasRutaPorEstado(estado);
   }
 
-  // ⭐ ENDPOINTS PARA REPARTIDOR
   @Get('repartidor/:repartidorId')
   obtenerRutasRepartidor(@Param('repartidorId', ParseIntPipe) repartidorId: number) {
     return this.rutasService.obtenerRutasRepartidor(repartidorId);
   }
-
-  @Patch('dia-ruta/:id/iniciar')
-  iniciarDiaRuta(@Param('id', ParseIntPipe) id: number) {
-    return this.rutasService.iniciarDiaRuta(id);
-  }
-
-  // FIN ENDPOINTS REPARTIDOR ⭐
 
   @Get(':id')
   async obtenerRutaPorId(@Param('id', ParseIntPipe) id: number) {
@@ -75,22 +102,16 @@ export class RutasController {
     });
   }
 
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.rutasService.remove(id);
-  }
+  // ========================================
+  // ACTUALIZAR (PATCH/PUT)
+  // ========================================
 
-  @Post('asignar-cliente')
-  asignarCliente(@Body() createClienteRutaDto: CreateClienteRutaDto) {
-    return this.rutasService.asignarCliente(createClienteRutaDto);
-  }
-
-  @Delete(':idDiaRuta/clientes/:idCliente')
-  removeCliente(
-    @Param('idDiaRuta', ParseIntPipe) idDiaRuta: number,
-    @Param('idCliente', ParseIntPipe) idCliente: number,
+  @Put(':id')
+  async actualizarRuta(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateRutaDto: any
   ) {
-    return this.rutasService.removeClienteFromRuta(idDiaRuta, idCliente);
+    return this.rutasService.actualizarRuta(id, updateRutaDto);
   }
 
   @Patch(':id/asignar-personal')
@@ -109,41 +130,38 @@ export class RutasController {
     return this.rutasService.cambiarEstadoDiaRuta(id, dto.estado);
   }
 
-  @Post('dia-ruta/:id/finalizar')
+  // ✅ CORREGIDO: POST → PATCH
+  @Patch('dia-ruta/:id/iniciar')
+  iniciarDiaRuta(@Param('id', ParseIntPipe) id: number) {
+    return this.rutasService.iniciarDiaRuta(id);
+  }
+
+  // ✅ CORREGIDO: POST → PATCH
+  @Patch('dia-ruta/:id/finalizar')
   finalizarDiaRuta(@Param('id', ParseIntPipe) id: number) {
     return this.rutasService.cambiarEstadoDiaRuta(id, 'completada');
   }
 
-  @Post('dia-ruta/:id/pausar')
+  // ✅ CORREGIDO: POST → PATCH
+  @Patch('dia-ruta/:id/pausar')
   pausarDiaRuta(@Param('id', ParseIntPipe) id: number) {
     return this.rutasService.cambiarEstadoDiaRuta(id, 'pausada');
   }
 
-  @Put(':id')
-  async actualizarRuta(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateRutaDto: any
+  // ========================================
+  // ELIMINAR (DELETE)
+  // ========================================
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.rutasService.remove(id);
+  }
+
+  @Delete(':idDiaRuta/clientes/:idCliente')
+  removeCliente(
+    @Param('idDiaRuta', ParseIntPipe) idDiaRuta: number,
+    @Param('idCliente', ParseIntPipe) idCliente: number,
   ) {
-    return this.rutasService.actualizarRuta(id, updateRutaDto);
-  }
-
-  @Post('crear-con-dia')
-  crearRutaConDia(@Body() data: {
-    nombre: string;
-    supervisorId: number | null;
-    repartidorId: number | null;
-    diaSemana: string;
-    clientesIds: number[];
-  }) {
-    return this.rutasService.crearRutaConDia(data);
-  }
-
-  @Post('agregar-dia')
-  agregarDiaARuta(@Body() data: {
-    rutaId: number;
-    diaSemana: string;
-    clientesIds: number[];
-  }) {
-    return this.rutasService.agregarDiaARuta(data);
+    return this.rutasService.removeClienteFromRuta(idDiaRuta, idCliente);
   }
 }
