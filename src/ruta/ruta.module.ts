@@ -12,6 +12,7 @@ import { Usuario } from 'src/usuarios/entities/usuario.entity';
 import { Precio } from 'src/precios/entities/precio.entity';
 import { Direccione } from 'src/direcciones/entities/direccione.entity';
 import { DiaRuta } from './entities/dia-ruta.entity';
+import { Venta } from 'src/ventas/entities/venta.entity';
 
 
 @Module({
@@ -23,7 +24,8 @@ import { DiaRuta } from './entities/dia-ruta.entity';
       Usuario,
       Precio,
       Direccione,
-      DiaRuta
+      DiaRuta,
+      Venta  
     ])
   ],
   controllers: [RutasController],

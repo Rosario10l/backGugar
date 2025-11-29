@@ -1,11 +1,15 @@
+// src/ventas/ventas.service.ts
+// ✅ MEJORADO - Incluye métodos para reportes semanales y limpieza automática
+
 import { Injectable, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Venta } from './entities/venta.entity';
-import { Repository } from 'typeorm';
+import { Between, LessThan, Repository } from 'typeorm';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Precio } from '../precios/entities/precio.entity';
 import { ClienteRuta } from 'src/ruta/entities/cliente-ruta.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class VentasService {
@@ -43,7 +47,13 @@ export class VentasService {
       
       nuevaVenta.clienteRuta = clienteRuta;
       nuevaVenta.precio = precio;
-      nuevaVenta.calcularTotal();
+      
+      // Solo calcular total si hay cantidad > 0
+      if (createVentaDto.cantidadVendida > 0) {
+        nuevaVenta.calcularTotal();
+      } else {
+        nuevaVenta.total = 0;
+      }
       
       await this.ventaRepo.save(nuevaVenta);
       return nuevaVenta;
@@ -51,6 +61,7 @@ export class VentasService {
       if (error instanceof NotFoundException) {
         throw error;
       }
+      console.error('Error creando venta:', error);
       throw new InternalServerErrorException('Error al crear la venta');
     }
   }
@@ -58,7 +69,14 @@ export class VentasService {
   async findAll() {
     try {
       return await this.ventaRepo.find({
-        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente']
+        relations: [
+          'precio', 
+          'clienteRuta', 
+          'clienteRuta.cliente',
+          'clienteRuta.cliente.direcciones',
+          'clienteRuta.diaRuta',
+          'clienteRuta.diaRuta.ruta'
+        ]
       });
     } catch (error) {
       throw new InternalServerErrorException('Error al obtener las ventas');
@@ -69,7 +87,12 @@ export class VentasService {
     try {
       const venta = await this.ventaRepo.findOne({
         where: { id },
-        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente']
+        relations: [
+          'precio', 
+          'clienteRuta', 
+          'clienteRuta.cliente',
+          'clienteRuta.cliente.direcciones'
+        ]
       });
       if (!venta) {
         throw new NotFoundException(`Venta con el id: ${id} no encontrada`);
@@ -89,12 +112,79 @@ export class VentasService {
         .createQueryBuilder('venta')
         .leftJoinAndSelect('venta.clienteRuta', 'clienteRuta')
         .leftJoinAndSelect('clienteRuta.cliente', 'cliente')
+        .leftJoinAndSelect('cliente.direcciones', 'direcciones')
         .leftJoinAndSelect('clienteRuta.diaRuta', 'diaRuta')
         .leftJoinAndSelect('venta.precio', 'precio')
         .where('diaRuta.id = :diaRutaId', { diaRutaId })
         .getMany();
     } catch (error) {
       throw new InternalServerErrorException('Error al obtener ventas por día de ruta');
+    }
+  }
+
+  async findByRangoFechas(inicio: Date, fin: Date) {
+    try {
+      return await this.ventaRepo.find({
+        where: {
+          fecha: Between(inicio, fin)
+        },
+        relations: [
+          'precio',
+          'clienteRuta',
+          'clienteRuta.cliente',
+          'clienteRuta.cliente.direcciones',
+          'clienteRuta.diaRuta',
+          'clienteRuta.diaRuta.ruta'
+        ],
+        order: {
+          fecha: 'DESC'
+        }
+      });
+    } catch (error) {
+      console.error('Error obteniendo ventas por rango:', error);
+      throw new InternalServerErrorException('Error al obtener ventas por rango de fechas');
+    }
+  }
+
+  async eliminarVentasAntiguas() {
+    try {
+      const hace7Dias = new Date();
+      hace7Dias.setDate(hace7Dias.getDate() - 7);
+      hace7Dias.setHours(0, 0, 0, 0);
+
+      const ventasAntiguas = await this.ventaRepo.find({
+        where: {
+          fecha: LessThan(hace7Dias)
+        }
+      });
+
+      const cantidad = ventasAntiguas.length;
+
+      if (cantidad > 0) {
+        await this.ventaRepo.remove(ventasAntiguas);
+      }
+
+      return {
+        success: true,
+        message: `Se eliminaron ${cantidad} ventas antiguas`,
+        cantidad,
+        fechaCorte: hace7Dias
+      };
+    } catch (error) {
+      console.error('Error eliminando ventas antiguas:', error);
+      throw new InternalServerErrorException('Error al eliminar ventas antiguas');
+    }
+  }
+
+  @Cron('59 23 * * 0') // Cada domingo a las 23:59
+  async limpiezaAutomaticaSemanal() {
+    console.log('🧹 Ejecutando limpieza automática de ventas antiguas...');
+    
+    try {
+      const resultado = await this.eliminarVentasAntiguas();
+      console.log(`✅ Limpieza completada: ${resultado.cantidad} ventas eliminadas`);
+    } catch (error) {
+      console.error('❌ Error en limpieza automática:', error);
     }
   }
 
@@ -153,9 +243,17 @@ export class VentasService {
 
   async findByFecha(fecha: Date) {
     try {
+      const inicio = new Date(fecha);
+      inicio.setHours(0, 0, 0, 0);
+      
+      const fin = new Date(fecha);
+      fin.setHours(23, 59, 59, 999);
+
       return await this.ventaRepo.find({
-        where: { fecha },
-        relations: ['precio']
+        where: {
+          fecha: Between(inicio, fin)
+        },
+        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente']
       });
     } catch (error) {
       throw new InternalServerErrorException('Error al obtener ventas por fecha');
@@ -165,11 +263,17 @@ export class VentasService {
   async calcularTotalDelDia(fecha: Date) {
     try {
       const ventas = await this.findByFecha(fecha);
-      const total = ventas.reduce((sum, venta) => sum + parseFloat(venta.total.toString()), 0);
+      const ventasRealizadas = ventas.filter(v => v.estado === 'realizado');
+      
+      const totalGarrafones = ventasRealizadas.reduce((sum, v) => sum + v.cantidadVendida, 0);
+      const totalIngresos = ventasRealizadas.reduce((sum, venta) => sum + parseFloat(venta.total.toString()), 0);
+      
       return {
         fecha,
-        totalVentas: ventas.length,
-        totalIngresos: total
+        totalVentas: ventasRealizadas.length,
+        ventasSaltadas: ventas.filter(v => v.estado === 'saltado').length,
+        totalGarrafones,
+        totalIngresos
       };
     } catch (error) {
       throw new InternalServerErrorException('Error al calcular total del día');

@@ -9,7 +9,7 @@ export class Venta {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => ClienteRuta, { nullable: false })
+  @ManyToOne(() => ClienteRuta, { nullable: false ,  onDelete: 'CASCADE'})
   @JoinColumn({ name: 'cliente_ruta_id' })
   clienteRuta: ClienteRuta;
 

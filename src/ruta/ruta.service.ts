@@ -13,7 +13,8 @@ import { Direccione } from 'src/direcciones/entities/direccione.entity';
 import { CreateRutaDto } from './dto/create-ruta.dto';
 import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto';
 import { ImportarExcelDto, ClienteExcelDto } from './dto/importar-excel.dto';
-import { DiasSemana, EstadoDiaRuta  } from './entities/dia-ruta.entity';
+import { DiasSemana, EstadoDiaRuta } from './entities/dia-ruta.entity';
+import { Venta } from 'src/ventas/entities/venta.entity';
 
 @Injectable()
 export class RutasService {
@@ -39,6 +40,9 @@ export class RutasService {
 
     @InjectRepository(Direccione)
     private direccionRepository: Repository<Direccione>,
+
+    @InjectRepository(Venta)
+    private ventaRepository: Repository<Venta>,
   ) { }
 
   async create(createRutaDto: CreateRutaDto): Promise<Ruta> {
@@ -512,7 +516,11 @@ export class RutasService {
     // 1. Buscar la ruta con todas sus relaciones
     const ruta = await this.rutaRepository.findOne({
       where: { id },
-      relations: ['diasRuta', 'diasRuta.clientesRuta']
+      relations: [
+        'diasRuta',
+        'diasRuta.clientesRuta',
+        'diasRuta.clientesRuta.ventas'  // ← IMPORTANTE: Cargar ventas también
+      ]
     });
 
     if (!ruta) {
@@ -520,18 +528,28 @@ export class RutasService {
     }
 
     // 2. Contadores para el reporte
+    let totalVentasEliminadas = 0;
     let totalClientesEliminados = 0;
     let totalDiasEliminados = 0;
 
-    // 3. Eliminar en cascada manualmente (para tener control)
+    // 3. Eliminar en cascada manualmente (para tener control total)
     for (const diaRuta of ruta.diasRuta) {
-      // 3.1 Eliminar todos los ClienteRuta de este DiaRuta
       if (diaRuta.clientesRuta && diaRuta.clientesRuta.length > 0) {
+
+        for (const clienteRuta of diaRuta.clientesRuta) {
+          // 3.1 Eliminar todas las ventas de este ClienteRuta
+          if (clienteRuta.ventas && clienteRuta.ventas.length > 0) {
+            await this.ventaRepository.remove(clienteRuta.ventas);
+            totalVentasEliminadas += clienteRuta.ventas.length;
+          }
+        }
+
+        // 3.2 Eliminar todos los ClienteRuta de este DiaRuta
         await this.clienteRutaRepository.remove(diaRuta.clientesRuta);
         totalClientesEliminados += diaRuta.clientesRuta.length;
       }
 
-      // 3.2 Eliminar el DiaRuta
+      // 3.3 Eliminar el DiaRuta
       await this.diaRutaRepository.remove(diaRuta);
       totalDiasEliminados++;
     }
@@ -546,7 +564,8 @@ export class RutasService {
         rutaId: id,
         rutaNombre: ruta.nombre,
         diasEliminados: totalDiasEliminados,
-        clientesEliminados: totalClientesEliminados
+        clientesEliminados: totalClientesEliminados,
+        ventasEliminadas: totalVentasEliminadas
       }
     };
   }
@@ -784,12 +803,12 @@ export class RutasService {
     return this.rutaRepository.find({
       where: { repartidor: { id: repartidorId } },
       relations: [
-        'supervisor', 
-        'repartidor', 
-        'diasRuta', 
-        'diasRuta.clientesRuta', 
-        'diasRuta.clientesRuta.cliente', 
-        'diasRuta.clientesRuta.cliente.direcciones', 
+        'supervisor',
+        'repartidor',
+        'diasRuta',
+        'diasRuta.clientesRuta',
+        'diasRuta.clientesRuta.cliente',
+        'diasRuta.clientesRuta.cliente.direcciones',
         'diasRuta.clientesRuta.precio'
       ]
     });
@@ -799,21 +818,23 @@ export class RutasService {
    * Iniciar un día de ruta (cambiar estado a en_curso)
    */
   async iniciarDiaRuta(diaRutaId: number) {
-    const diaRuta = await this.diaRutaRepository.findOne({ 
-      where: { id: diaRutaId } 
+    const diaRuta = await this.diaRutaRepository.findOne({
+      where: { id: diaRutaId }
     });
-    
+
     if (!diaRuta) {
       throw new NotFoundException('DiaRuta no encontrado');
     }
-    
+
     diaRuta.estado = EstadoDiaRuta.EN_CURSO;
-    
+
     if (!diaRuta.fechaInicio) {
       diaRuta.fechaInicio = new Date();
     }
-    
+
     return this.diaRutaRepository.save(diaRuta);
   }
+
+
 
 }

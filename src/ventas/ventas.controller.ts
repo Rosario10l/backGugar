@@ -22,6 +22,14 @@ export class VentasController {
     return this.ventasService.findByDiaRuta(diaRutaId);
   }
 
+  @Get('rango')
+  findByRango(
+    @Query('inicio') inicio: string,
+    @Query('fin') fin: string
+  ) {
+    return this.ventasService.findByRangoFechas(new Date(inicio), new Date(fin));
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.ventasService.findOne(+id);
@@ -35,6 +43,11 @@ export class VentasController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.ventasService.removeVenta(+id);
+  }
+
+  @Delete('limpiar-antiguas')
+  limpiarVentasAntiguas() {
+    return this.ventasService.eliminarVentasAntiguas();
   }
 
   @Get('fecha/:fecha')
