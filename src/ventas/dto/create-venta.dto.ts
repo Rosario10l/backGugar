@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf } from "class-validator";
 
 export class CreateVentaDto {
     @IsNotEmpty()
@@ -8,6 +8,7 @@ export class CreateVentaDto {
 
     @IsNotEmpty()
     @IsNumber()
+    @ValidateIf((o) => o.estado !== 'saltado')
     @Min(1, { message: 'La cantidad vendida debe ser al menos 1' })
     cantidadVendida: number;
 
