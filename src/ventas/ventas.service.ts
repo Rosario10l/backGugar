@@ -1,4 +1,3 @@
-// services/ventas.service.ts
 import { Injectable, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Venta } from './entities/venta.entity';
@@ -6,6 +5,7 @@ import { Repository } from 'typeorm';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Precio } from '../precios/entities/precio.entity';
+import { ClienteRuta } from 'src/ruta/entities/cliente-ruta.entity';
 
 @Injectable()
 export class VentasService {
@@ -16,23 +16,21 @@ export class VentasService {
     @InjectRepository(Precio)
     private precioRepo: Repository<Precio>,
 
-  /*  @InjectRepository(ClienteRuta)
-    private clienteRutaRepo: Repository<ClienteRuta>*/
+    @InjectRepository(ClienteRuta)
+    private clienteRutaRepo: Repository<ClienteRuta>
   ) {}
 
-   /*async createVenta(createVentaDto: CreateVentaDto) {
+  async createVenta(createVentaDto: CreateVentaDto) {
     try {
-      // Verificar que el cliente_ruta existe
       const clienteRuta = await this.clienteRutaRepo.findOne({
         where: { id: createVentaDto.clienteRutaId },
-        relations: ['cliente', 'ruta']
+        relations: ['cliente', 'precio']
       });
 
       if (!clienteRuta) {
         throw new NotFoundException(`ClienteRuta con ID ${createVentaDto.clienteRutaId} no encontrado`);
       }
 
-      // Verificar que el precio existe
       const precio = await this.precioRepo.findOne({
         where: { id: createVentaDto.precioId }
       });
@@ -43,11 +41,8 @@ export class VentasService {
 
       const nuevaVenta = this.ventaRepo.create(createVentaDto);
       
-      // Asignar relaciones
       nuevaVenta.clienteRuta = clienteRuta;
       nuevaVenta.precio = precio;
-      
-      // Calcular total automáticamente
       nuevaVenta.calcularTotal();
       
       await this.ventaRepo.save(nuevaVenta);
@@ -58,12 +53,12 @@ export class VentasService {
       }
       throw new InternalServerErrorException('Error al crear la venta');
     }
-  }*/
+  }
 
   async findAll() {
     try {
       return await this.ventaRepo.find({
-        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente', 'clienteRuta.ruta']
+        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente']
       });
     } catch (error) {
       throw new InternalServerErrorException('Error al obtener las ventas');
@@ -74,7 +69,7 @@ export class VentasService {
     try {
       const venta = await this.ventaRepo.findOne({
         where: { id },
-        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente', 'clienteRuta.ruta']
+        relations: ['precio', 'clienteRuta', 'clienteRuta.cliente']
       });
       if (!venta) {
         throw new NotFoundException(`Venta con el id: ${id} no encontrada`);
@@ -88,6 +83,20 @@ export class VentasService {
     }
   }
 
+  async findByDiaRuta(diaRutaId: number) {
+    try {
+      return await this.ventaRepo
+        .createQueryBuilder('venta')
+        .leftJoinAndSelect('venta.clienteRuta', 'clienteRuta')
+        .leftJoinAndSelect('clienteRuta.cliente', 'cliente')
+        .leftJoinAndSelect('clienteRuta.diaRuta', 'diaRuta')
+        .leftJoinAndSelect('venta.precio', 'precio')
+        .where('diaRuta.id = :diaRutaId', { diaRutaId })
+        .getMany();
+    } catch (error) {
+      throw new InternalServerErrorException('Error al obtener ventas por día de ruta');
+    }
+  }
 
   async updateVenta(id: number, updateVentaDto: UpdateVentaDto) {
     try {
@@ -99,7 +108,6 @@ export class VentasService {
         throw new NotFoundException(`Venta con el id: ${id} no encontrada`);
       }
 
-      // Si se actualiza el precio, verificar que existe
       if (updateVentaDto.precioId) {
         const precio = await this.precioRepo.findOne({
           where: { id: updateVentaDto.precioId }
@@ -110,7 +118,6 @@ export class VentasService {
         venta.precio = precio;
       }
 
-      // Si se actualiza cantidad o precio, recalcular total
       if (updateVentaDto.cantidadVendida || updateVentaDto.precioId) {
         if (updateVentaDto.cantidadVendida) {
           venta.cantidadVendida = updateVentaDto.cantidadVendida;
@@ -144,7 +151,6 @@ export class VentasService {
     }
   }
 
-  // metodo para obtener ventas por fecha
   async findByFecha(fecha: Date) {
     try {
       return await this.ventaRepo.find({
@@ -156,7 +162,6 @@ export class VentasService {
     }
   }
 
-//para calcular el total del dia
   async calcularTotalDelDia(fecha: Date) {
     try {
       const ventas = await this.findByFecha(fecha);

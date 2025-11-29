@@ -11,7 +11,7 @@ export class ClienteRuta {
   id: number;
 
   // === RELACIONES ===
-  
+
   @Column()
   cliente_id: number;
 
@@ -34,18 +34,24 @@ export class ClienteRuta {
   precio: Precio;
 
   // === CAMPOS ADICIONALES ===
-  
+
   @Column({ type: 'boolean', default: false })
   es_credito: boolean;
 
   @Column({ type: 'boolean', default: false })
   requiere_factura: boolean;
 
+  @Column({ default: false })
+  visitado: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  garrafonesVendidos: number;
+
   @CreateDateColumn()
   created_at: Date;
 
   // === RELACIÓN CON VENTAS ===
-  
+
   @OneToMany(() => Venta, (venta) => venta.clienteRuta)
   ventas: Venta[];
 }

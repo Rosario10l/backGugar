@@ -47,6 +47,19 @@ export class RutasController {
     return this.rutasService.getDiasRutaPorEstado(estado);
   }
 
+  // ⭐ ENDPOINTS PARA REPARTIDOR
+  @Get('repartidor/:repartidorId')
+  obtenerRutasRepartidor(@Param('repartidorId', ParseIntPipe) repartidorId: number) {
+    return this.rutasService.obtenerRutasRepartidor(repartidorId);
+  }
+
+  @Patch('dia-ruta/:id/iniciar')
+  iniciarDiaRuta(@Param('id', ParseIntPipe) id: number) {
+    return this.rutasService.iniciarDiaRuta(id);
+  }
+
+  // FIN ENDPOINTS REPARTIDOR ⭐
+
   @Get(':id')
   async obtenerRutaPorId(@Param('id', ParseIntPipe) id: number) {
     return this.rutasService.findOne(id, {
@@ -94,11 +107,6 @@ export class RutasController {
     @Body() dto: { estado: string }
   ) {
     return this.rutasService.cambiarEstadoDiaRuta(id, dto.estado);
-  }
-
-  @Post('dia-ruta/:id/iniciar')
-  iniciarDiaRuta(@Param('id', ParseIntPipe) id: number) {
-    return this.rutasService.cambiarEstadoDiaRuta(id, 'en_curso');
   }
 
   @Post('dia-ruta/:id/finalizar')

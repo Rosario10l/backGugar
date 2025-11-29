@@ -30,7 +30,6 @@ export class PreciosService {
     const nuevoPrecio = this.precioRepo.create({
       precioPorGarrafon: createPrecioDto.precioPorGarrafon,
       tipoCompra: createPrecioDto.tipoCompra,
-      fechaVigencia: new Date() // Fecha actual por defecto
     });
 
     return this.precioRepo.save(nuevoPrecio);

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
 import { VentasService } from './ventas.service';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
@@ -7,14 +7,19 @@ import { UpdateVentaDto } from './dto/update-venta.dto';
 export class VentasController {
   constructor(private readonly ventasService: VentasService) {}
 
- /* @Post()
+  @Post()
   create(@Body() createVentaDto: CreateVentaDto) {
     return this.ventasService.createVenta(createVentaDto);
-  }*/
+  }
 
   @Get("all")
   findAll() {
     return this.ventasService.findAll();
+  }
+
+  @Get('dia-ruta/:diaRutaId')
+  findByDiaRuta(@Param('diaRutaId', ParseIntPipe) diaRutaId: number) {
+    return this.ventasService.findByDiaRuta(diaRutaId);
   }
 
   @Get(':id')
