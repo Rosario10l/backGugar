@@ -1,5 +1,6 @@
 
 import { Cliente } from "src/clientes/entities/cliente.entity";
+import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity";
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
@@ -15,7 +16,9 @@ export class Precio {
     
         
 
-        // RELACIÓN CON CLIENTES
         @OneToMany(() => Cliente, (cliente) => cliente.tipoPrecio)
         clientes: Cliente[];
+
+         @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.precio)
+        clientesRutas: ClienteRuta[];
 }

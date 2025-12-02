@@ -1,6 +1,10 @@
-import { Precio } from "src/precios/entities/precio.entity";
-import { Pedido } from "src/pedidos/entities/pedido.entity"; // <--- IMPORTANTE IMPORTAR ESTO
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+//cliente.entity.ts
+
+import { Direccione } from "src/direcciones/entities/direccione.entity";
+import { Pedido } from "src/pedidos/entities/pedido.entity";
+import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity";
+import { Precio } from "src/precios/entities/precio.entity"; // ← AGREGAR IMPORT
+import { Column, CreateDateColumn, Entity, OneToMany, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Cliente {
@@ -9,38 +13,35 @@ export class Cliente {
 
     // ... (Tus campos de nombre, teléfono, correo, etc. déjalos igual) ...
     @Column()
-    nombre: string;
+    representante: string;
+
     @Column()
     telefono: string;
+
     @Column({ unique: true })
-    correo: string;
+    cte: number;
 
-    // ... (Tus campos nuevos de domicilio y coordenadas déjalos igual) ...
     @Column()
-    calle: string;
-    @Column()
-    colonia: string;
-    @Column({ nullable: true })
-    referencia: string;
-    @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
-    latitud: number;
-    @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
-    longitud: number;
-
+    negocio: string;
+    
     @CreateDateColumn()
     createdAt: Date;
 
-    // --- RELACIONES ---
-
-    // 1. PRECIO (Esta ya estaba bien)
-    @Column()
-    tipoPrecioId: number;
+    // ===== AGREGAR ESTA RELACIÓN =====
     @ManyToOne(() => Precio, (precio) => precio.clientes)
     @JoinColumn({ name: 'tipoPrecioId' })
     tipoPrecio: Precio;
+    // =================================
 
-    // 2. PEDIDOS (¡ESTA ES LA QUE FALTABA! AGRÉGALA DE NUEVO) ✅
-    // Necesaria para que funcione clientes.service.ts y pedido.entity.ts
+    // RELACIÓN CON PEDIDOS
     @OneToMany(() => Pedido, (pedido) => pedido.cliente)
     pedidos: Pedido[];
+
+    // RELACIÓN CON DIRECCIONES
+    @OneToMany(() => Direccione, (direccion) => direccion.cliente)
+    direcciones: Direccione[];
+
+    // RELACIÓN CON RUTAS
+    @OneToMany(() => ClienteRuta, (clienteRuta) => clienteRuta.cliente)
+    clienteRutas: ClienteRuta[];
 }

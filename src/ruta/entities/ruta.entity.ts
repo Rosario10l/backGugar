@@ -1,37 +1,56 @@
-import { Usuario } from 'src/usuarios/entities/usuario.entity';
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { DiaRuta } from './dia-ruta.entity';
 
-@Entity()
+export enum EstadoRuta {
+  IMPORTADA = 'importada',      // Recién importada del Excel
+  ASIGNADA = 'asignada',        // Ya tiene supervisor/repartidor
+  ACTIVA = 'activa',            // En operación
+  FINALIZADA = 'finalizada',    // Completada
+  CANCELADA = 'cancelada'       // Cancelada
+}
+
+@Entity('ruta')
 export class Ruta {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: 'varchar', length: 255 })
   nombre: string;
 
-  // --- BORRAMOS LOS CAMPOS VIEJOS (lugarEntrega, cantidad, coordenadas) ---
-  // Porque ahora la ruta se define por los clientes que tiene asignados.
+  // @Column({
+  //   type: 'enum',
+  //   enum: EstadoRuta,
+  //   default: EstadoRuta.IMPORTADA
+  // })
+  // estado: EstadoRuta;
 
-  // --- RELACIONES CON PERSONAL ---
-  
-  // Repartidor
+  // Supervisor y repartidor ahora son OPCIONALES (nullable)
   @Column({ nullable: true })
-  idRepartidor: number;
+  idRepartidor?: number;
 
+  @Column({ nullable: true })
+  supervisor_id?: number;
+
+  // // Metadatos de importación
+  // @Column({ type: 'varchar', length: 255, nullable: true })
+  // fechaReporte?: string; // Fecha del Excel
+
+  // @Column({ type: 'varchar', length: 255, nullable: true })
+  // importadoPor?: string; // Usuario que importó
+
+  // @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  // fechaImportacion: Date;
+
+  // Relaciones
   @ManyToOne(() => Usuario, { nullable: true })
   @JoinColumn({ name: 'idRepartidor' })
-  repartidor: Usuario;
-
-  // Supervisor
-  @Column({ nullable: true })
-  supervisorId: number;
+  repartidor?: Usuario;
 
   @ManyToOne(() => Usuario, { nullable: true })
-  @JoinColumn({ name: 'supervisorId' })
-  supervisor: Usuario;
+  @JoinColumn({ name: 'supervisor_id' })
+  supervisor?: Usuario;
 
-  // --- RELACIÓN PRINCIPAL (DÍAS) ---
-  @OneToMany(() => DiaRuta, (dia) => dia.ruta, { cascade: true })
+  @OneToMany(() => DiaRuta, (diaRuta) => diaRuta.ruta, { cascade: true })
   diasRuta: DiaRuta[];
 }

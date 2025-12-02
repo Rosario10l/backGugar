@@ -5,16 +5,23 @@ import { UpdatePrecioDto } from './dto/update-precio.dto';
 
 @Controller('precios')
 export class PreciosController {
-  constructor(private readonly preciosService: PreciosService) {}
+  constructor(private readonly preciosService: PreciosService) { }
 
   @Post()
   create(@Body() createPrecioDto: CreatePrecioDto) {
-    return this.preciosService.createPrecio(createPrecioDto);
+    return this.preciosService.create(createPrecioDto);
   }
 
   @Get("all")
   findAll() {
     return this.preciosService.findAll();
+  }
+
+  @Get('verificar/:precio')
+  async verificarExiste(@Param('precio') precio: string) {
+    const precioNumero = parseFloat(precio);
+    const existe = await this.preciosService.existePrecio(precioNumero);
+    return existe; // Retorna true o false
   }
 
   @Get(':id')
