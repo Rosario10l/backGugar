@@ -1,5 +1,6 @@
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { DiaRuta } from './dia-ruta.entity';
 
 @Entity()
 export class Ruta {
@@ -9,21 +10,28 @@ export class Ruta {
   @Column()
   nombre: string;
 
-  @Column()
-  lugarEntrega: string;
+  // --- BORRAMOS LOS CAMPOS VIEJOS (lugarEntrega, cantidad, coordenadas) ---
+  // Porque ahora la ruta se define por los clientes que tiene asignados.
 
-  @Column('int')
-  cantidad: number;
-
+  // --- RELACIONES CON PERSONAL ---
+  
+  // Repartidor
   @Column({ nullable: true })
-  acciones: string;
+  idRepartidor: number;
 
-  // Guardamos las coordenadas como JSON para no complicarnos con tablas extra
-  // Si usas Postgres usa 'jsonb', si es MySQL usa 'json' o 'simple-json'
-  @Column('simple-json') 
-  coordenadas: any[]; 
-
-  // Relación: Una ruta pertenece a Un Repartidor (Usuario)
-  @ManyToOne(() => Usuario, (usuario) => usuario.id, { eager: true })
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'idRepartidor' })
   repartidor: Usuario;
+
+  // Supervisor
+  @Column({ nullable: true })
+  supervisorId: number;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'supervisorId' })
+  supervisor: Usuario;
+
+  // --- RELACIÓN PRINCIPAL (DÍAS) ---
+  @OneToMany(() => DiaRuta, (dia) => dia.ruta, { cascade: true })
+  diasRuta: DiaRuta[];
 }

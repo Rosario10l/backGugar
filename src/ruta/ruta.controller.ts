@@ -36,4 +36,21 @@ export class RutasController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.rutasService.remove(id);
   }
+  @Post('crear-con-dia')
+  crearRutaConDia(@Body() data: any) {
+    return this.rutasService.crearRutaConDia(data);
+  }
+
+  @Post('agregar-dia')
+  agregarDiaARuta(@Body() data: any) {
+    return this.rutasService.agregarDiaARuta(data);
+  }
+  @Patch('dia-ruta/:id/estado')
+  async cambiarEstadoDia(
+    @Param('id') id: number, 
+    @Body('estado') estado: string
+  ) {
+    // Necesitas crear este método en tu servicio (ver abajo)
+    return this.rutasService.cambiarEstadoDia(id, estado);
+  }
 }
