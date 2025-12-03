@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  CreateDateColumn,
+  Unique,
+} from 'typeorm';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 import { DiaRuta } from './dia-ruta.entity';
 import { Precio } from 'src/precios/entities/precio.entity';

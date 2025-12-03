@@ -1,38 +1,59 @@
-//cliente.entity.ts
-
-import { Direccione } from "src/direcciones/entities/direccione.entity";
-import { Pedido } from "src/pedidos/entities/pedido.entity";
-import { ClienteRuta } from "src/ruta/entities/cliente-ruta.entity";
-import { Precio } from "src/precios/entities/precio.entity"; // ← AGREGAR IMPORT
-import { Column, CreateDateColumn, Entity, OneToMany, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
-
+import { Direccione } from 'src/direcciones/entities/direccione.entity';
+import { Pedido } from 'src/pedidos/entities/pedido.entity';
+import { Precio } from 'src/precios/entities/precio.entity';
+import { ClienteRuta } from 'src/ruta/entities/cliente-ruta.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 @Entity()
 export class Cliente {
     @PrimaryGeneratedColumn()
     id: number;
 
-    // ... (Tus campos de nombre, teléfono, correo, etc. déjalos igual) ...
     @Column()
-    representante: string;
+    representante: string; // En BD se llama representante
 
     @Column()
     telefono: string;
 
     @Column({ unique: true })
-    cte: number;
+    correo: string;
+
+    @Column({ unique: true, nullable: true }) 
+    cte: number; // Lo haremos opcional o autogenerado
+
+    @Column({ nullable: true })
+    negocio: string;
+
+    // --- CAMPOS DE DIRECCIÓN (Los agregamos aquí para facilidad) ---
+    @Column()
+    calle: string;
 
     @Column()
-    negocio: string;
-    
+    colonia: string;
+
+    @Column({ nullable: true })
+    referencia: string;
+
+    @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+    latitud: number;
+
+    @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+    longitud: number;
+    // ------------------------------------------------------------
+
     @CreateDateColumn()
     createdAt: Date;
 
-    // ===== AGREGAR ESTA RELACIÓN =====
     @ManyToOne(() => Precio, (precio) => precio.clientes)
     @JoinColumn({ name: 'tipoPrecioId' })
     tipoPrecio: Precio;
-    // =================================
-
     // RELACIÓN CON PEDIDOS
     @OneToMany(() => Pedido, (pedido) => pedido.cliente)
     pedidos: Pedido[];

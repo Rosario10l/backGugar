@@ -16,77 +16,76 @@ export class ClientesService {
   ){ }
 
 
-  async createCliente(createClienteDto: CreateClienteDto) {
+async createCliente(createClienteDto: CreateClienteDto) {
     try {
-      //VERIFICAR QUE EL TIPO DE PRECIO EXISTE
-      const tipoPrecio = await this.precioRepo.findOne({
-        where: { id: createClienteDto.tipoPrecioId }
+      // 1. Validar Precio
+      const precio = await this.precioRepo.findOneBy({ id: createClienteDto.tipoPrecioId });
+      if (!precio) throw new BadRequestException('Precio no encontrado');
+
+      // 2. Generar número de cliente (CTE) si no viene
+      // Usamos la fecha actual como número único rápido
+      const cteGenerado = createClienteDto.cte || Math.floor(Date.now() / 1000);
+
+      // 3. Crear Cliente (Mapeando datos)
+      const newCliente = this.clienteRepo.create({
+        representante: createClienteDto.nombre, // Mapeamos nombre -> representante
+        telefono: createClienteDto.telefono,
+        correo: createClienteDto.correo,
+        tipoPrecio: precio,
+        cte: cteGenerado,
+        negocio: createClienteDto.negocio || 'Particular',
+        // Dirección
+        calle: createClienteDto.calle,
+        colonia: createClienteDto.colonia,
+        referencia: createClienteDto.referencia,
+        latitud: createClienteDto.latitud,
+        longitud: createClienteDto.longitud
       });
 
-      if (!tipoPrecio) {
-        throw new BadRequestException(`Tipo de precio con ID ${createClienteDto.tipoPrecioId} no encontrado`);
-      }
+      return await this.clienteRepo.save(newCliente);
 
-      const newCliente = this.clienteRepo.create(createClienteDto);
-      await this.clienteRepo.save(newCliente);
-      return newCliente;
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
-        throw error;
+      console.error(error);
+      // Manejo de error de duplicados
+      if (error.code === 'ER_DUP_ENTRY') {
+         throw new BadRequestException('El correo o número de cliente ya existe.');
       }
       throw new InternalServerErrorException('Error al crear el cliente');
     }
   }
-
-async findAll() {
-    try {
-      return await this.clienteRepo.find({
-        relations: ['tipoPrecio'] // Cargar tipo de precio
-      });
-    } catch (error) {
-      throw new InternalServerErrorException('Error al obtener los clientes');
-    }
+  async findAll() {
+    return this.clienteRepo.find({ relations: ['tipoPrecio'] });
   }
 
-
   async findOne(id: number) {
-    try {
-      const cliente = await this.clienteRepo.findOne({
-        where: { id },
-        relations: ['tipoPrecio'] // Cargar tipo de precio
-      });
-      if (!cliente) {
-        throw new NotFoundException(`cliente con el id: ${id} no encontrado`);
-      }
-      return cliente;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new InternalServerErrorException('Error al buscar el cliente');
-    }
+    return this.clienteRepo.findOne({
+      where: { id },
+      relations: ['tipoPrecio'],
+    });
   }
 
   async updateCliente(id: number, updateClienteDto: UpdateClienteDto) {
     try {
       const cliente = await this.clienteRepo.findOneBy({ id });
       if (!cliente) {
-        throw new NotFoundException(`cliente con el id: ${id} no encontrado`);
+        throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
       }
 
-      //VERIFICAR TIPO DE PRECIO SI SE ACTUALIZA
+      // Validar Precio si viene en el DTO
       if (updateClienteDto.tipoPrecioId) {
-        const tipoPrecio = await this.precioRepo.findOne({
-          where: { id: updateClienteDto.tipoPrecioId }
+        const precio = await this.precioRepo.findOneBy({
+          id: updateClienteDto.tipoPrecioId,
         });
-
-        if (!tipoPrecio) {
-          throw new BadRequestException(`Tipo de precio con ID ${updateClienteDto.tipoPrecioId} no encontrado`);
-        }
+        if (!precio) throw new BadRequestException('Precio no encontrado');
+        // Asignamos el objeto precio a la entidad
+        cliente.tipoPrecio = precio;
       }
 
-      const updateCliente = this.clienteRepo.merge(cliente, updateClienteDto);
-      return await this.clienteRepo.save(updateCliente);
+      // Fusionamos los demás datos (calle, colonia, latitud, etc.)
+      // El 'merge' toma todo lo que venga en el DTO y lo pone en el cliente
+      this.clienteRepo.merge(cliente, updateClienteDto);
+
+      return await this.clienteRepo.save(cliente);
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;

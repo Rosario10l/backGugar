@@ -1,31 +1,26 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Length, MaxLength, Min } from "class-validator";
+import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Length, MaxLength } from "class-validator";
 
 export class CreateClienteDto {
-    // --- DATOS PERSONALES ---
+    // FRONTEND ENVÍA 'nombre', 'telefono', 'correo', 'tipoPrecioId', 'calle', 'colonia'...
+
     @IsNotEmpty()
-    @Length(3, 50) // Le di un poco más de espacio
     @IsString()
-    nombre: string;
+    nombre: string; // El front envía "nombre"
 
     @IsNotEmpty()
     @IsString()
     @MaxLength(15)
     telefono: string;
 
-    @IsNumber()
     @IsNotEmpty()
-    cte:number
+    @IsEmail()
+    correo: string;
 
-    
-    @IsString()
-    negocio:string
-
-    // --- RELACIÓN PRECIO (Esto se queda igual) ---
     @IsNotEmpty()
     @IsNumber()
     tipoPrecioId: number;
 
-    // --- NUEVOS CAMPOS: DOMICILIO 🏠 ---
+    // DIRECCIÓN (El front las envía directas)
     @IsNotEmpty()
     @IsString()
     calle: string;
@@ -34,18 +29,22 @@ export class CreateClienteDto {
     @IsString()
     colonia: string;
 
-    @IsOptional() // La referencia puede ser opcional
+    @IsOptional()
     @IsString()
     referencia?: string;
 
-    // --- COORDENADAS GPS (Para el mapa) 🗺️ ---
-    // Son opcionales al crear si no seleccionan mapa, 
-    // pero recomendables. Tú decides si poner @IsNotEmpty
-    @IsOptional() 
+    @IsOptional()
     @IsNumber()
     latitud?: number;
 
     @IsOptional()
     @IsNumber()
     longitud?: number;
+    
+    // Opcionales que el front NO envía, pero la entidad podría pedir
+    @IsOptional()
+    cte?: number; 
+
+    @IsOptional()
+    negocio?: string;
 }

@@ -3,11 +3,18 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  ManyToMany,
-  JoinTable,
-} from 'typeorm';
+  OneToMany,
+} from 'typeorm'; // Cambiamos ManyToMany por OneToMany
 import { Ruta } from './ruta.entity';
-import { Cliente } from 'src/clientes/entities/cliente.entity';
+import { ClienteRuta } from './cliente-ruta.entity'; // <--- IMPORTANTE
+
+export enum EstadoDiaRuta {
+  PENDIENTE = 'pendiente',
+  EN_CURSO = 'en_curso',
+  COMPLETADA = 'completada',
+  PAUSADA = 'pausada',
+  CANCELADA = 'cancelada',
+}
 
 @Entity()
 export class DiaRuta {
@@ -15,18 +22,21 @@ export class DiaRuta {
   id: number;
 
   @Column()
-  diaSemana: string; // "Lunes - Jueves", "Martes", etc.
+  diaSemana: string;
 
-  // RELACIÓN: Un día pertenece a una Ruta Padre
+  @Column({ default: EstadoDiaRuta.PENDIENTE })
+  estado: string;
+
+  @Column({ nullable: true })
+  fechaInicio: Date;
+
+  @Column({ nullable: true })
+  fechaFinalizacion: Date;
+
   @ManyToOne(() => Ruta, (ruta) => ruta.diasRuta, { onDelete: 'CASCADE' })
   ruta: Ruta;
 
-  // --- NUEVO CAMPO: ESTADO REAL ---
-  // Valores: 'pendiente', 'en_curso', 'completada', 'pausada'
-  @Column({ default: 'pendiente' })
-  estado: string;
-  // RELACIÓN: Un día tiene MUCHOS clientes
-  @ManyToMany(() => Cliente)
-  @JoinTable() // Esto crea la tabla intermedia automática
-  clientes: Cliente[];
+  // --- CAMBIO CRÍTICO: Usamos la tabla intermedia de tu compañero ---
+  @OneToMany(() => ClienteRuta, (cr) => cr.diaRuta, { cascade: true })
+  clientesRuta: ClienteRuta[];
 }
