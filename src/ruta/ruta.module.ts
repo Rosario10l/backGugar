@@ -10,7 +10,6 @@ import { ClienteRuta } from './entities/cliente-ruta.entity';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
 import { Precio } from 'src/precios/entities/precio.entity';
-import { Direccione } from 'src/direcciones/entities/direccione.entity';
 import { DiaRuta } from './entities/dia-ruta.entity';
 import { Venta } from 'src/ventas/entities/venta.entity';
 
@@ -23,7 +22,6 @@ import { Venta } from 'src/ventas/entities/venta.entity';
       Cliente,
       Usuario,
       Precio,
-      Direccione,
       DiaRuta,
       Venta  
     ])

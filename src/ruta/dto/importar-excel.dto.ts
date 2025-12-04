@@ -1,5 +1,3 @@
-// src/ruta/dto/importar-excel.dto.ts
-
 import { IsString, IsArray, ValidateNested, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 

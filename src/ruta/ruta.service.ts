@@ -6,9 +6,10 @@ import { CreateRutaDto } from './dto/create-ruta.dto';
 import { Usuario } from 'src/usuarios/entities/usuario.entity';
 import { UpdateRutaDto } from './dto/update-ruta.dto';
 import { DiaRuta, EstadoDiaRuta } from './entities/dia-ruta.entity';
-import { Cliente } from 'src/clientes/entities/cliente.entity';
-import { ClienteRuta } from './entities/cliente-ruta.entity'; // <--- Importante
-import { Precio } from 'src/precios/entities/precio.entity';   // <--- Importante
+import { Cliente } from '../clientes/entities/cliente.entity';
+import { ClienteRuta } from './entities/cliente-ruta.entity';
+import { Precio } from 'src/precios/entities/precio.entity';
+import { ImportarExcelDto } from './dto/importar-excel.dto';
 
 @Injectable()
 export class RutasService {
@@ -19,14 +20,14 @@ export class RutasService {
     @InjectRepository(Usuario) private usuarioRepository: Repository<Usuario>,
     @InjectRepository(ClienteRuta) private clienteRutaRepository: Repository<ClienteRuta>,
     @InjectRepository(Precio) private precioRepository: Repository<Precio>,
-  ) {}
+  ) { }
 
-  // --- CRUD BÁSICO (Compatible con tu compañero) ---
+  // --- CRUD BÁSICO ---
   async create(createRutaDto: CreateRutaDto): Promise<Ruta> {
     const { idRepartidor, ...rutaData } = createRutaDto;
     let repartidor: Usuario | null = null;
     if (idRepartidor) {
-        repartidor = await this.usuarioRepository.findOneBy({ id: idRepartidor });
+      repartidor = await this.usuarioRepository.findOneBy({ id: idRepartidor });
     }
     const nuevaRuta = this.rutaRepository.create({
       ...rutaData,
@@ -77,17 +78,15 @@ export class RutasService {
   }
 
   async remove(id: number): Promise<{ message: string }> {
-    // Lógica de borrado en cascada manual si es necesario, o dejar que la BD lo haga
     const result = await this.rutaRepository.delete(id);
     if (result.affected === 0)
       throw new NotFoundException(`Ruta con ID ${id} no encontrada`);
     return { message: `Ruta #${id} eliminada correctamente` };
   }
 
-  // === MÉTODOS ADAPTADOS (PARA QUE FUNCIONE TU MODAL) ===
+  // === MÉTODOS ADAPTADOS ===
 
   async crearRutaConDia(data: any) {
-    // 1. BUSCAR PERSONAL (Esto es lo que faltaba para asegurar la relación)
     let supervisor: Usuario | null = null;
     let repartidor: Usuario | null = null;
 
@@ -99,46 +98,41 @@ export class RutasService {
       repartidor = await this.usuarioRepository.findOneBy({ id: data.repartidorId });
     }
 
-    // 2. Crear Día (primero vacío)
     const nuevoDia = this.diaRutaRepository.create({
       diaSemana: data.diaSemana,
       estado: EstadoDiaRuta.PENDIENTE,
     });
 
-    // 3. Crear Ruta Padre (Asignando las ENTIDADES completas)
     const nuevaRuta = this.rutaRepository.create({
       nombre: data.nombre,
-      supervisor: supervisor || undefined, // <--- Usamos el objeto
-      repartidor: repartidor || undefined, // <--- Usamos el objeto
-      diasRuta: [nuevoDia] // Guardamos la ruta y el día
+      supervisor: supervisor || undefined,
+      repartidor: repartidor || undefined,
+      diasRuta: [nuevoDia]
     });
 
     const rutaGuardada = await this.rutaRepository.save(nuevaRuta);
-    
-    // Verificamos que se haya guardado el día
-    const diaGuardado = rutaGuardada.diasRuta && rutaGuardada.diasRuta.length > 0 
-      ? rutaGuardada.diasRuta[0] 
+
+    const diaGuardado = rutaGuardada.diasRuta && rutaGuardada.diasRuta.length > 0
+      ? rutaGuardada.diasRuta[0]
       : null;
 
     if (!diaGuardado) {
-       // Por seguridad, si algo falló con el día
-       return rutaGuardada; 
+      return rutaGuardada;
     }
 
-    // 4. ASIGNAR CLIENTES (Usando la tabla intermedia de tu compañero)
     const ids = data.clientesIds || [];
-    
+
     for (const clienteId of ids) {
-      const cliente = await this.clienteRepository.findOne({ 
-        where: { id: clienteId }, 
-        relations: ['tipoPrecio'] 
+      const cliente = await this.clienteRepository.findOne({
+        where: { id: clienteId },
+        relations: ['tipoPrecio']
       });
-      
+
       if (cliente) {
         const clienteRuta = this.clienteRutaRepository.create({
           diaRuta: diaGuardado,
           cliente: cliente,
-          precio: cliente.tipoPrecio, // Guardamos el precio actual
+          precio: cliente.tipoPrecio,
           es_credito: false,
           requiere_factura: false,
         });
@@ -148,11 +142,11 @@ export class RutasService {
 
     return rutaGuardada;
   }
+
   async agregarDiaARuta(data: any) {
     const ruta = await this.rutaRepository.findOneBy({ id: data.rutaId });
     if (!ruta) throw new NotFoundException('Ruta no encontrada');
 
-    // Crear Día
     const nuevoDia = this.diaRutaRepository.create({
       diaSemana: data.diaSemana,
       estado: EstadoDiaRuta.PENDIENTE,
@@ -160,7 +154,6 @@ export class RutasService {
     });
     const diaGuardado = await this.diaRutaRepository.save(nuevoDia);
 
-    // Asignar Clientes (Tabla Intermedia)
     const ids = data.clientesIds || [];
     for (const clienteId of ids) {
       const cliente = await this.clienteRepository.findOne({
@@ -183,7 +176,6 @@ export class RutasService {
     return diaGuardado;
   }
 
-  // Otros métodos de tu compañero (Los dejé tal cual o stubbed)
   async cambiarEstadoDia(id: number, estado: string) {
     await this.diaRutaRepository.update(id, { estado });
     return { message: 'Estado actualizado' };
@@ -195,21 +187,24 @@ export class RutasService {
       order: { representante: 'ASC' },
     });
   }
+
   async asignarPersonalARuta(id: number, dto: any) {
     return this.update(id, dto);
   }
+
   async iniciarDiaRuta(id: number) {
     return this.cambiarEstadoDia(id, EstadoDiaRuta.EN_CURSO);
   }
+
   async finalizarDiaRuta(id: number) {
     return this.cambiarEstadoDia(id, EstadoDiaRuta.COMPLETADA);
   }
+
   async pausarDiaRuta(id: number) {
     return this.cambiarEstadoDia(id, EstadoDiaRuta.PAUSADA);
   }
 
   async removeClienteFromRuta(idDia: number, idCliente: number) {
-    // Lógica para borrar de la tabla intermedia
     const relacion = await this.clienteRutaRepository.findOne({
       where: { diaRuta: { id: idDia }, cliente: { id: idCliente } },
     });
@@ -220,17 +215,180 @@ export class RutasService {
   async asignarCliente(data: any) {
     return { message: 'Asignado' };
   }
-  async importarDesdeExcel(data: any) {
-    return { message: 'Importado' };
+
+  // ========================================
+  // IMPORTAR DESDE EXCEL - CORREGIDO
+  // ========================================
+  async importarDesdeExcel(data: ImportarExcelDto) {
+    const { fechaReporte, nombreRuta, supervisorId, repartidorId, clientes } = data;
+
+    let clientesCreados = 0;
+    let clientesActualizados = 0;
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    try {
+      // 1. BUSCAR PERSONAL
+      let supervisor: Usuario | undefined = undefined;
+      let repartidor: Usuario | undefined = undefined;
+
+      if (supervisorId) {
+        const sup = await this.usuarioRepository.findOneBy({ id: supervisorId });
+        if (sup) supervisor = sup;
+        else warnings.push(`Supervisor ID ${supervisorId} no encontrado`);
+      }
+
+      if (repartidorId) {
+        const rep = await this.usuarioRepository.findOneBy({ id: repartidorId });
+        if (rep) repartidor = rep;
+        else warnings.push(`Repartidor ID ${repartidorId} no encontrado`);
+      }
+
+      // 2. CREAR LA RUTA PADRE
+      const nuevaRuta = this.rutaRepository.create({
+        nombre: nombreRuta,
+        supervisor,
+        repartidor,
+      });
+      const rutaGuardada = await this.rutaRepository.save(nuevaRuta);
+
+      // 3. AGRUPAR CLIENTES POR DÍA DE VISITA
+      const diasMap: Record<string, string> = {
+        'LJ': 'Lunes-Jueves',
+        'MV': 'Martes-Viernes',
+        'IS': 'Miércoles-Sábado'
+      };
+
+      const clientesPorDia: Record<string, any[]> = {
+        'Lunes-Jueves': [],
+        'Martes-Viernes': [],
+        'Miércoles-Sábado': []
+      };
+
+      for (const clienteData of clientes) {
+        const diaKey = diasMap[clienteData.diasVisita] || 'Miércoles-Sábado';
+        clientesPorDia[diaKey].push(clienteData);
+      }
+
+      // 4. CREAR DÍAS DE RUTA Y ASIGNAR CLIENTES
+      const diasCreados: DiaRuta[] = [];
+
+      for (const [diaSemana, clientesDelDia] of Object.entries(clientesPorDia)) {
+        if (clientesDelDia.length === 0) continue;
+
+        // Crear el DiaRuta
+        const nuevoDia = this.diaRutaRepository.create({
+          diaSemana,
+          estado: EstadoDiaRuta.PENDIENTE,
+          ruta: rutaGuardada,
+        });
+        const diaGuardado = await this.diaRutaRepository.save(nuevoDia);
+        diasCreados.push(diaGuardado);
+
+        // Procesar cada cliente del día
+        for (const clienteData of clientesDelDia) {
+          try {
+            // 4.1 Buscar el PRECIO
+            const precioValor = parseFloat(clienteData.precioGarrafon) || 0;
+            const precio = await this.precioRepository.findOne({
+              where: { precioPorGarrafon: precioValor }
+            });
+
+            if (!precio) {
+              errors.push(`Precio $${precioValor} no existe para cliente ${clienteData.numeroCliente}`);
+              continue;
+            }
+
+            // 4.2 Buscar si el cliente ya existe
+            const cteNumero = parseInt(clienteData.numeroCliente) || 0;
+            let clienteExistente = await this.clienteRepository.findOne({
+              where: { cte: cteNumero }
+            });
+
+            if (!clienteExistente) {
+              // Crear nuevo cliente usando save directo
+              const clienteNuevo = new Cliente();
+              clienteNuevo.cte = cteNumero;
+              clienteNuevo.representante = clienteData.representante || '';
+              clienteNuevo.negocio = clienteData.nombreNegocio || null;
+              clienteNuevo.telefono = '';
+              clienteNuevo.correo = null;
+              clienteNuevo.calle = clienteData.direccion || '';
+              clienteNuevo.colonia = clienteData.colonia || '';
+              clienteNuevo.referencia = '';
+              clienteNuevo.latitud = clienteData.latitud ? parseFloat(String(clienteData.latitud)) : null;
+              clienteNuevo.longitud = clienteData.longitud ? parseFloat(String(clienteData.longitud)) : null;
+              clienteNuevo.tipoPrecio = precio;
+
+              clienteExistente = await this.clienteRepository.save(clienteNuevo);
+              clientesCreados++;
+            } else {
+              // Actualizar coordenadas si vienen nuevas
+              if (clienteData.latitud && clienteData.longitud) {
+                clienteExistente.latitud = parseFloat(String(clienteData.latitud));
+                clienteExistente.longitud = parseFloat(String(clienteData.longitud));
+                await this.clienteRepository.save(clienteExistente);
+                clientesActualizados++;
+              }
+            }
+
+            // 4.3 Crear la relación ClienteRuta
+            const clienteRutaNuevo = new ClienteRuta();
+            clienteRutaNuevo.cliente = clienteExistente;
+            clienteRutaNuevo.diaRuta = diaGuardado;
+            clienteRutaNuevo.precio = precio;
+            clienteRutaNuevo.es_credito = clienteData.esCredito || false;
+            clienteRutaNuevo.requiere_factura = clienteData.requiereFactura || false;
+            clienteRutaNuevo.visitado = false;
+
+            await this.clienteRutaRepository.save(clienteRutaNuevo);
+
+          } catch (clienteError: any) {
+            errors.push(`Error con cliente ${clienteData.numeroCliente}: ${clienteError.message}`);
+          }
+        }
+      }
+
+      // 5. RESPUESTA
+      return {
+        success: true,
+        message: '✅ Importación completada',
+        rutaId: rutaGuardada.id,
+        rutasCreadas: 1,
+        diasRutaCreados: diasCreados.length,
+        clientesCreados,
+        clientesActualizados,
+        totalClientes: clientes.length,
+        errors: errors.length > 0 ? errors : undefined,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        detalles: {
+          ruta: rutaGuardada.nombre,
+          dias: diasCreados.map(d => ({
+            id: d.id,
+            dia: d.diaSemana,
+            clientes: clientesPorDia[d.diaSemana]?.length || 0
+          }))
+        }
+      };
+
+    } catch (error: any) {
+      console.error('❌ Error en importación:', error);
+      return {
+        success: false,
+        message: `Error en importación: ${error.message}`,
+        errors: [error.message]
+      };
+    }
   }
- 
-  // Agrega esto al final de tu clase RutasService
+
   async getRutasPorEstado(estado: string) {
     return [];
   }
+
   async getDiasRutaPorEstado(estado: string) {
     return [];
   }
+
   async obtenerRutasRepartidor(repartidorId: number) {
     return [];
   }
