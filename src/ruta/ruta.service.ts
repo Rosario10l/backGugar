@@ -212,6 +212,33 @@ export class RutasService {
     return { message: 'Eliminado' };
   }
 
+  async marcarClienteVisitado(
+    clienteRutaId: number,
+    dto: { visitado: boolean; garrafonesVendidos?: number },
+  ) {
+    const clienteRuta = await this.clienteRutaRepository.findOne({
+      where: { id: clienteRutaId },
+    });
+
+    if (!clienteRuta) {
+      throw new NotFoundException(`ClienteRuta con ID ${clienteRutaId} no encontrado`);
+    }
+
+    clienteRuta.visitado = dto.visitado;
+
+    if (dto.garrafonesVendidos !== undefined) {
+      clienteRuta.garrafonesVendidos = dto.garrafonesVendidos;
+    }
+
+    await this.clienteRutaRepository.save(clienteRuta);
+
+    return {
+      message: 'Cliente actualizado',
+      visitado: clienteRuta.visitado,
+      garrafonesVendidos: clienteRuta.garrafonesVendidos
+    };
+  }
+
   async asignarCliente(data: any) {
     return { message: 'Asignado' };
   }
@@ -381,15 +408,31 @@ export class RutasService {
     }
   }
 
-  async getRutasPorEstado(estado: string) {
-    return [];
-  }
+  // async getRutasPorEstado(estado: string) {
+  //   return [];
+  // }
 
-  async getDiasRutaPorEstado(estado: string) {
-    return [];
-  }
+  // async getDiasRutaPorEstado(estado: string) {
+  //   return [];
+  // }
 
   async obtenerRutasRepartidor(repartidorId: number) {
-    return [];
+    const rutas = await this.rutaRepository.find({
+      where: { repartidor: { id: repartidorId } },
+      relations: [
+        'repartidor',
+        'supervisor',
+        'diasRuta',
+        'diasRuta.clientesRuta',
+        'diasRuta.clientesRuta.cliente',
+        'diasRuta.clientesRuta.precio',
+      ],
+    });
+
+    if (!rutas || rutas.length === 0) {
+      return [];
+    }
+
+    return rutas;
   }
 }

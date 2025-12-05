@@ -17,7 +17,7 @@ import { UpdateRutaDto } from './dto/update-ruta.dto';
 
 @Controller('rutas')
 export class RutasController {
-  constructor(private readonly rutasService: RutasService) {}
+  constructor(private readonly rutasService: RutasService) { }
 
   // ========================================
   // CREAR / IMPORTAR
@@ -69,15 +69,15 @@ export class RutasController {
     return this.rutasService.obtenerClientesDisponibles(diaRutaId);
   }
 
-  @Get('estado/:estado')
-  getRutasPorEstado(@Param('estado') estado: string) {
-    return this.rutasService.getRutasPorEstado(estado);
-  }
+  // @Get('estado/:estado')
+  // getRutasPorEstado(@Param('estado') estado: string) {
+  //   return this.rutasService.getRutasPorEstado(estado);
+  // }
 
-  @Get('dias-ruta/estado/:estado')
-  getDiasRutaPorEstado(@Param('estado') estado: string) {
-    return this.rutasService.getDiasRutaPorEstado(estado);
-  }
+  // @Get('dias-ruta/estado/:estado')
+  // getDiasRutaPorEstado(@Param('estado') estado: string) {
+  //   return this.rutasService.getDiasRutaPorEstado(estado);
+  // }
 
   @Get('repartidor/:repartidorId')
   obtenerRutasRepartidor(
@@ -145,6 +145,14 @@ export class RutasController {
   pausarDiaRuta(@Param('id', ParseIntPipe) id: number) {
     // CORREGIDO: 'cambiarEstadoDia'
     return this.rutasService.cambiarEstadoDia(id, 'pausada');
+  }
+
+  @Patch('cliente-ruta/:id/visitado')
+  marcarClienteVisitado(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { visitado: boolean; garrafonesVendidos?: number },
+  ) {
+    return this.rutasService.marcarClienteVisitado(id, dto);
   }
 
   // ========================================
