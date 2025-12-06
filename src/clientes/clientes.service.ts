@@ -81,29 +81,83 @@ export class ClientesService {
     });
   }
 
-  async updateCliente(id: number, updateClienteDto: UpdateClienteDto) {
+async updateCliente(id: number, updateClienteDto: UpdateClienteDto) {
     try {
-      const cliente = await this.clienteRepo.findOneBy({ id });
+      console.log('🔄 Actualizando cliente ID:', id);
+      console.log('📥 Datos recibidos:', updateClienteDto);
+
+      const cliente = await this.clienteRepo.findOne({
+        where: { id },
+        relations: ['tipoPrecio']
+      });
+
       if (!cliente) {
         throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
       }
 
-      // Validar Precio si viene en el DTO
+      console.log('📋 Cliente encontrado:', {
+        id: cliente.id,
+        nombre: cliente.nombre,
+        tipoPrecioActual: cliente.tipoPrecio?.id
+      });
+
+      // Validar y actualizar Precio si viene en el DTO
       if (updateClienteDto.tipoPrecioId) {
         const precio = await this.precioRepo.findOneBy({
           id: updateClienteDto.tipoPrecioId,
         });
-        if (!precio) throw new BadRequestException('Precio no encontrado');
-        // Asignamos el objeto precio a la entidad
+        
+        if (!precio) {
+          throw new BadRequestException(`Precio con ID ${updateClienteDto.tipoPrecioId} no encontrado`);
+        }
+        
         cliente.tipoPrecio = precio;
+        console.log('💰 Nuevo precio asignado:', precio.id);
       }
 
-      // Fusionamos los demás datos (calle, colonia, latitud, etc.)
-      // El 'merge' toma todo lo que venga en el DTO y lo pone en el cliente
-      this.clienteRepo.merge(cliente, updateClienteDto);
+      // Actualizar campos uno por uno para mejor control
+      if (updateClienteDto.nombre !== undefined) {
+        cliente.nombre = updateClienteDto.nombre;
+      }
+      if (updateClienteDto.negocio !== undefined) {
+        cliente.negocio = updateClienteDto.negocio;
+      }
+      if (updateClienteDto.cte !== undefined) {
+        cliente.cte = updateClienteDto.cte;
+      }
+      if (updateClienteDto.telefono !== undefined) {
+        cliente.telefono = updateClienteDto.telefono || null;
+      }
+      if (updateClienteDto.correo !== undefined) {
+        cliente.correo = updateClienteDto.correo;
+      }
+      if (updateClienteDto.calle !== undefined) {
+        cliente.calle = updateClienteDto.calle;
+      }
+      if (updateClienteDto.colonia !== undefined) {
+        cliente.colonia = updateClienteDto.colonia;
+      }
+      if (updateClienteDto.referencia !== undefined) {
+        cliente.referencia = updateClienteDto.referencia;
+      }
+      if (updateClienteDto.latitud !== undefined) {
+        cliente.latitud = updateClienteDto.latitud;
+      }
+      if (updateClienteDto.longitud !== undefined) {
+        cliente.longitud = updateClienteDto.longitud;
+      }
 
-      return await this.clienteRepo.save(cliente);
+      const clienteActualizado = await this.clienteRepo.save(cliente);
+      
+      console.log('✅ Cliente actualizado exitosamente:', {
+        id: clienteActualizado.id,
+        nombre: clienteActualizado.nombre
+      });
+
+      return clienteActualizado;
     } catch (error) {
+      console.error('❌ Error en updateCliente:', error);
+      
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }

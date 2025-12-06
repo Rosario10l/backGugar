@@ -18,8 +18,8 @@ export class Cliente {
   @Column()
   nombre: string; 
 
-  @Column()
-  telefono: string;
+@Column({ type: 'varchar', length: 10, nullable: true })
+  telefono: string | null;
 
  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
   correo: string | null;

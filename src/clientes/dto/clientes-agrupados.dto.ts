@@ -2,7 +2,7 @@ export class ClienteConRutaDto {
   id: number;
   nombre: string;
   negocio: string | null;
-  telefono: string;
+  telefono: string | null;
   cte: number | null;
   correo: string | null;
   calle: string;

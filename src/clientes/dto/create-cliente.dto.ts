@@ -8,8 +8,9 @@ export class CreateClienteDto {
 
     @IsNotEmpty()
     @IsString()
-    @MaxLength(15)
-    telefono: string;
+    @MaxLength(10)
+    @IsOptional()
+    telefono?: string;
 
     @IsNotEmpty()
     @IsEmail()

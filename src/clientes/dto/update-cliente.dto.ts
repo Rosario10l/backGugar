@@ -8,7 +8,7 @@ export class UpdateClienteDto {
     @IsOptional()
     @IsString()
     @MaxLength(15)
-    telefono?: string;
+    telefono?: string | null;
 
     @IsOptional()
     @IsString()
