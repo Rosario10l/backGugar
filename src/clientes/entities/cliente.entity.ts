@@ -16,7 +16,7 @@ export class Cliente {
   id: number;
 
   @Column()
-  representante: string; // En BD se llama representante
+  nombre: string; 
 
   @Column()
   telefono: string;
@@ -24,13 +24,12 @@ export class Cliente {
  @Column({ type: 'varchar', length: 255, nullable: true, unique: true })
   correo: string | null;
 
-  @Column({ unique: true, nullable: true })
-  cte: number; // Lo haremos opcional o autogenerado
+  @Column({ unique: true, nullable: true ,type: 'int'})
+  cte: number | null;
 
   @Column({ nullable: true })
   negocio: string;
 
-  // --- CAMPOS DE DIRECCIÓN (Los agregamos aquí para facilidad) ---
   @Column()
   calle: string;
 

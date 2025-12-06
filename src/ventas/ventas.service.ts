@@ -1,6 +1,3 @@
-// src/ventas/ventas.service.ts
-// ✅ MEJORADO - Incluye métodos para reportes semanales y limpieza automática
-
 import { Injectable, InternalServerErrorException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Venta } from './entities/venta.entity';
@@ -73,7 +70,6 @@ export class VentasService {
           'precio', 
           'clienteRuta', 
           'clienteRuta.cliente',
-          'clienteRuta.cliente.direcciones',
           'clienteRuta.diaRuta',
           'clienteRuta.diaRuta.ruta'
         ]
@@ -90,8 +86,7 @@ export class VentasService {
         relations: [
           'precio', 
           'clienteRuta', 
-          'clienteRuta.cliente',
-          'clienteRuta.cliente.direcciones'
+          'clienteRuta.cliente'
         ]
       });
       if (!venta) {
@@ -112,12 +107,12 @@ export class VentasService {
         .createQueryBuilder('venta')
         .leftJoinAndSelect('venta.clienteRuta', 'clienteRuta')
         .leftJoinAndSelect('clienteRuta.cliente', 'cliente')
-        .leftJoinAndSelect('cliente.direcciones', 'direcciones')
         .leftJoinAndSelect('clienteRuta.diaRuta', 'diaRuta')
         .leftJoinAndSelect('venta.precio', 'precio')
         .where('diaRuta.id = :diaRutaId', { diaRutaId })
         .getMany();
     } catch (error) {
+      console.error('Error en findByDiaRuta:', error);
       throw new InternalServerErrorException('Error al obtener ventas por día de ruta');
     }
   }
@@ -132,7 +127,6 @@ export class VentasService {
           'precio',
           'clienteRuta',
           'clienteRuta.cliente',
-          'clienteRuta.cliente.direcciones',
           'clienteRuta.diaRuta',
           'clienteRuta.diaRuta.ruta'
         ],

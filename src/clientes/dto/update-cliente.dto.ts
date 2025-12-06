@@ -3,7 +3,7 @@ import { IsEmail, IsNumber, IsOptional, IsString, MaxLength } from "class-valida
 export class UpdateClienteDto { 
     @IsOptional()
     @IsString()
-    representante?: string;
+    nombre?: string;
 
     @IsOptional()
     @IsString()

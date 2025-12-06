@@ -31,7 +31,7 @@ export class ClienteRuta {
   @Column()
   dia_ruta_id: number;
 
-  @ManyToOne(() => DiaRuta, (diaRuta) => diaRuta.clientesRuta) // ← CORREGIDO
+  @ManyToOne(() => DiaRuta, (diaRuta) => diaRuta.clientesRuta,{onDelete: 'CASCADE'})
   @JoinColumn({ name: 'dia_ruta_id' })
   diaRuta: DiaRuta;
 

@@ -1,7 +1,6 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Length, MaxLength } from "class-validator";
+import { IsEmail, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Length, MaxLength } from "class-validator";
 
 export class CreateClienteDto {
-    // FRONTEND ENVÍA 'nombre', 'telefono', 'correo', 'tipoPrecioId', 'calle', 'colonia'...
 
     @IsNotEmpty()
     @IsString()
@@ -14,13 +13,13 @@ export class CreateClienteDto {
 
     @IsNotEmpty()
     @IsEmail()
-    correo: string;
+    @IsOptional()
+    correo?: string;
 
     @IsNotEmpty()
     @IsNumber()
     tipoPrecioId: number;
 
-    // DIRECCIÓN (El front las envía directas)
     @IsNotEmpty()
     @IsString()
     calle: string;
@@ -40,11 +39,14 @@ export class CreateClienteDto {
     @IsOptional()
     @IsNumber()
     longitud?: number;
-    
-    // Opcionales que el front NO envía, pero la entidad podría pedir
+
     @IsOptional()
-    cte?: number; 
+    cte?: number;
 
     @IsOptional()
     negocio?: string;
+
+    @IsInt()
+    @IsOptional()
+    diaRutaId?: number;
 }

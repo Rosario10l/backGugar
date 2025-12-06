@@ -5,11 +5,16 @@ import { UpdateClienteDto } from './dto/update-cliente.dto';
 
 @Controller('clientes')
 export class ClientesController {
-  constructor(private readonly clientesService: ClientesService) {}
+  constructor(private readonly clientesService: ClientesService) { }
 
   @Post()
   create(@Body() createClienteDto: CreateClienteDto) {
     return this.clientesService.createCliente(createClienteDto);
+  }
+
+  @Get('agrupados')
+  obtenerClientesAgrupados() {
+    return this.clientesService.obtenerClientesAgrupados();
   }
 
   @Get("all")
@@ -17,6 +22,10 @@ export class ClientesController {
     return this.clientesService.findAll();
   }
 
+  @Get('supervisor/:supervisorId')
+  obtenerRutasDeSupervisor(@Param('supervisorId', ParseIntPipe) supervisorId: number) {
+    return this.clientesService.obtenerRutasDeSupervisor(supervisorId);
+  }
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.clientesService.findOne(+id);
@@ -32,9 +41,11 @@ export class ClientesController {
     return this.clientesService.removeCliente(+id);
   }
 
-      //PARA VER PEDIDOS DEL CLIENTE
-    @Get(':id/pedidos')
-    verPedidos(@Param('id', ParseIntPipe) id: number) {
-        return this.clientesService.verPedidos(id);
-    }
+  //PARA VER PEDIDOS DEL CLIENTE
+  @Get(':id/pedidos')
+  verPedidos(@Param('id', ParseIntPipe) id: number) {
+    return this.clientesService.verPedidos(id);
+  }
+
+
 }

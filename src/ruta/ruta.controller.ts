@@ -43,10 +43,10 @@ export class RutasController {
     return this.rutasService.agregarDiaARuta(data);
   }
 
-  @Post('asignar-cliente')
-  asignarCliente(@Body() createClienteRutaDto: CreateClienteRutaDto) {
-    return this.rutasService.asignarCliente(createClienteRutaDto);
-  }
+  // @Post('asignar-cliente')
+  // asignarCliente(@Body() createClienteRutaDto: CreateClienteRutaDto) {
+  //   return this.rutasService.asignarCliente(createClienteRutaDto);
+  // }
 
   // ========================================
   // OBTENER (GET)
@@ -170,5 +170,18 @@ export class RutasController {
     @Param('idCliente', ParseIntPipe) idCliente: number,
   ) {
     return this.rutasService.removeClienteFromRuta(idDiaRuta, idCliente);
+  }
+
+  @Post('asignar-cliente')
+  asignarCliente(@Body() data: { clienteId: number; diaRutaId: number; precioId: number }) {
+    return this.rutasService.asignarClienteARuta(data);
+  }
+
+  @Delete('desasignar-cliente/:clienteId/:diaRutaId')
+  desasignarCliente(
+    @Param('clienteId', ParseIntPipe) clienteId: number,
+    @Param('diaRutaId', ParseIntPipe) diaRutaId: number
+  ) {
+    return this.rutasService.desasignarClienteDeRuta(clienteId, diaRutaId);
   }
 }

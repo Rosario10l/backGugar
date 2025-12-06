@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Ruta } from './entities/ruta.entity';
@@ -183,8 +183,8 @@ export class RutasService {
 
   async obtenerClientesDisponibles(diaRutaId?: number) {
     return this.clienteRepository.find({
-      relations: ['tipoPrecio', 'direcciones'],
-      order: { representante: 'ASC' },
+      relations: ['tipoPrecio'],
+      order: { nombre: 'ASC' },
     });
   }
 
@@ -239,9 +239,9 @@ export class RutasService {
     };
   }
 
-  async asignarCliente(data: any) {
-    return { message: 'Asignado' };
-  }
+  // async asignarCliente(data: any) {
+  //   return { message: 'Asignado' };
+  // }
 
   // ========================================
   // IMPORTAR DESDE EXCEL - CORREGIDO
@@ -336,7 +336,7 @@ export class RutasService {
               // Crear nuevo cliente usando save directo
               const clienteNuevo = new Cliente();
               clienteNuevo.cte = cteNumero;
-              clienteNuevo.representante = clienteData.representante || '';
+              clienteNuevo.nombre = clienteData.representante || '';
               clienteNuevo.negocio = clienteData.nombreNegocio || null;
               clienteNuevo.telefono = '';
               clienteNuevo.correo = null;
@@ -435,4 +435,99 @@ export class RutasService {
 
     return rutas;
   }
+
+    async asignarClienteARuta(data: {
+    clienteId: number;
+    diaRutaId: number;
+    precioId: number;
+  }) {
+    const { clienteId, diaRutaId, precioId } = data;
+
+    // Validar que existan
+    const cliente = await this.clienteRepository.findOne({ where: { id: clienteId } });
+    if (!cliente) {
+      throw new NotFoundException(`Cliente con ID ${clienteId} no encontrado`);
+    }
+
+    const diaRuta = await this.diaRutaRepository.findOne({ 
+      where: { id: diaRutaId },
+      relations: ['ruta']
+    });
+    if (!diaRuta) {
+      throw new NotFoundException(`Día de ruta con ID ${diaRutaId} no encontrado`);
+    }
+
+    const precio = await this.precioRepository.findOne({ where: { id: precioId } });
+    if (!precio) {
+      throw new NotFoundException(`Precio con ID ${precioId} no encontrado`);
+    }
+
+    // Verificar que no esté ya asignado a este día
+    const existente = await this.clienteRutaRepository.findOne({
+      where: { 
+        cliente: { id: clienteId }, 
+        diaRuta: { id: diaRutaId } 
+      }
+    });
+
+    if (existente) {
+      throw new BadRequestException('El cliente ya está asignado a esta ruta');
+    }
+
+    // Crear la asignación
+    const clienteRuta = this.clienteRutaRepository.create({
+      cliente,
+      diaRuta,
+      precio,
+      es_credito: false,
+      requiere_factura: false,
+      visitado: false,
+    });
+
+    await this.clienteRutaRepository.save(clienteRuta);
+
+    return {
+      success: true,
+      message: 'Cliente asignado a la ruta correctamente',
+      clienteRuta: {
+        id: clienteRuta.id,
+        cliente: cliente.nombre,
+        ruta: diaRuta.ruta.nombre,
+        dia: diaRuta.diaSemana
+      }
+    };
+  }
+
+  // ========================================
+  // DESASIGNAR CLIENTE DE RUTA
+  // ========================================
+  async desasignarClienteDeRuta(clienteId: number, diaRutaId: number) {
+    // Buscar la relación
+    const clienteRuta = await this.clienteRutaRepository.findOne({
+      where: { 
+        cliente: { id: clienteId }, 
+        diaRuta: { id: diaRutaId } 
+      },
+      relations: ['cliente', 'diaRuta', 'diaRuta.ruta']
+    });
+
+    if (!clienteRuta) {
+      throw new NotFoundException('El cliente no está asignado a esta ruta');
+    }
+
+    // Eliminar la asignación
+    await this.clienteRutaRepository.remove(clienteRuta);
+
+    return {
+      success: true,
+      message: 'Cliente desasignado de la ruta correctamente',
+      detalles: {
+        cliente: clienteRuta.cliente.nombre,
+        ruta: clienteRuta.diaRuta.ruta.nombre,
+        dia: clienteRuta.diaRuta.diaSemana
+      }
+    };
+  }
+
+
 }
