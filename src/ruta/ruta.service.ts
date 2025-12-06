@@ -10,17 +10,27 @@ import { Cliente } from '../clientes/entities/cliente.entity';
 import { ClienteRuta } from './entities/cliente-ruta.entity';
 import { Precio } from 'src/precios/entities/precio.entity';
 import { ImportarExcelDto } from './dto/importar-excel.dto';
+import { DividirRutaDto } from './dto/dividir-ruta.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RutasService {
+  private GOOGLE_API_KEY: string;
   constructor(
+    private configService: ConfigService,
     @InjectRepository(Ruta) private rutaRepository: Repository<Ruta>,
     @InjectRepository(DiaRuta) private diaRutaRepository: Repository<DiaRuta>,
     @InjectRepository(Cliente) private clienteRepository: Repository<Cliente>,
     @InjectRepository(Usuario) private usuarioRepository: Repository<Usuario>,
     @InjectRepository(ClienteRuta) private clienteRutaRepository: Repository<ClienteRuta>,
     @InjectRepository(Precio) private precioRepository: Repository<Precio>,
-  ) { }
+  ) {
+    this.GOOGLE_API_KEY = this.configService.get<string>('GOOGLE_API_KEY')!;
+
+    if (!this.GOOGLE_API_KEY) {
+      throw new Error('La GOOGLE_API_KEY no está configurada correctamente.');
+    }
+  }
 
   // --- CRUD BÁSICO ---
   async create(createRutaDto: CreateRutaDto): Promise<Ruta> {
@@ -436,7 +446,7 @@ export class RutasService {
     return rutas;
   }
 
-    async asignarClienteARuta(data: {
+  async asignarClienteARuta(data: {
     clienteId: number;
     diaRutaId: number;
     precioId: number;
@@ -449,7 +459,7 @@ export class RutasService {
       throw new NotFoundException(`Cliente con ID ${clienteId} no encontrado`);
     }
 
-    const diaRuta = await this.diaRutaRepository.findOne({ 
+    const diaRuta = await this.diaRutaRepository.findOne({
       where: { id: diaRutaId },
       relations: ['ruta']
     });
@@ -464,9 +474,9 @@ export class RutasService {
 
     // Verificar que no esté ya asignado a este día
     const existente = await this.clienteRutaRepository.findOne({
-      where: { 
-        cliente: { id: clienteId }, 
-        diaRuta: { id: diaRutaId } 
+      where: {
+        cliente: { id: clienteId },
+        diaRuta: { id: diaRutaId }
       }
     });
 
@@ -504,9 +514,9 @@ export class RutasService {
   async desasignarClienteDeRuta(clienteId: number, diaRutaId: number) {
     // Buscar la relación
     const clienteRuta = await this.clienteRutaRepository.findOne({
-      where: { 
-        cliente: { id: clienteId }, 
-        diaRuta: { id: diaRutaId } 
+      where: {
+        cliente: { id: clienteId },
+        diaRuta: { id: diaRutaId }
       },
       relations: ['cliente', 'diaRuta', 'diaRuta.ruta']
     });
@@ -529,5 +539,286 @@ export class RutasService {
     };
   }
 
+  // ========================================
+  // 🆕 DIVIDIR RUTA
+  // ========================================
+  async dividirRuta(dividirRutaDto: DividirRutaDto) {
+    const { diaRutaId, puntoCorte } = dividirRutaDto;
+
+    // 1. Obtener el día de ruta con todos sus clientes
+    const diaRuta = await this.diaRutaRepository.findOne({
+      where: { id: diaRutaId },
+      relations: ['clientesRuta', 'clientesRuta.cliente', 'ruta'],
+    });
+
+    if (!diaRuta) {
+      throw new NotFoundException(`Día de ruta con ID ${diaRutaId} no encontrado`);
+    }
+
+    // 1.1. Preparar clientes y validar
+    const clientesConUbicacion = diaRuta.clientesRuta.filter(
+      cr => cr.cliente.latitud && cr.cliente.longitud
+    );
+
+    // Validar que hay suficientes clientes con ubicación
+    if (clientesConUbicacion.length < 4) {
+      throw new BadRequestException('Se necesitan al menos 4 clientes con ubicación GPS para dividir la ruta.');
+    }
+
+    // Validar punto de corte
+    const totalClientesConUbicacion = clientesConUbicacion.length;
+    if (puntoCorte < 2 || puntoCorte > totalClientesConUbicacion - 2) {
+      throw new BadRequestException(
+        `El punto de corte debe estar entre 2 y ${totalClientesConUbicacion - 2}`
+      );
+    }
+
+    // 2. Mapear clientes para la ordenación por vecino más cercano
+    let clientesParaOrdenacion = clientesConUbicacion.map(cr => ({
+      id: cr.cliente.id,
+      latitud: cr.cliente.latitud!,
+      longitud: cr.cliente.longitud!,
+      clienteRuta: cr,
+    }));
+
+    // 3. Ordenar por vecino más cercano (simulando una secuencia lógica)
+    const clientesOrdenadosPorSecuencia = this.ordenarPorVecinoMasCercano(clientesParaOrdenacion);
+    // 
+
+
+
+    // 4. Dividir en dos grupos usando el punto de corte en la secuencia lógica
+    const grupoA_datos = clientesOrdenadosPorSecuencia.slice(0, puntoCorte);
+    const grupoB_datos = clientesOrdenadosPorSecuencia.slice(puntoCorte);
+
+    // Mapear de vuelta a las entidades de relación ClienteRuta
+    const grupoA = grupoA_datos.map(d => d.clienteRuta);
+    const grupoB = grupoB_datos.map(d => d.clienteRuta);
+
+    // 5. Calcular rutas optimizadas para cada grupo
+    const rutaA = await this.calcularRutaOptimizada(grupoA);
+    const rutaB = await this.calcularRutaOptimizada(grupoB);
+
+    // 6. Retornar resultado
+    return {
+      mensaje: 'Ruta dividida exitosamente y sub-rutas optimizadas',
+      rutaOriginal: {
+        nombre: diaRuta.ruta.nombre,
+        diaSemana: diaRuta.diaSemana,
+        totalClientes: clientesConUbicacion.length,
+      },
+      subRutaA: {
+        totalClientes: grupoA.length,
+        distanciaKm: (rutaA.totalDistance / 1000).toFixed(2),
+        tiempoMinutos: Math.floor(rutaA.totalDuration / 60),
+        clientes: grupoA.map(cr => ({
+          id: cr.cliente.id,
+          nombre: cr.cliente.nombre,
+          direccion: `${cr.cliente.calle}, ${cr.cliente.colonia}`,
+        })),
+      },
+      subRutaB: {
+        totalClientes: grupoB.length,
+        distanciaKm: (rutaB.totalDistance / 1000).toFixed(2),
+        tiempoMinutos: Math.floor(rutaB.totalDuration / 60),
+        clientes: grupoB.map(cr => ({
+          id: cr.cliente.id,
+          nombre: cr.cliente.nombre,
+          direccion: `${cr.cliente.calle}, ${cr.cliente.colonia}`,
+        })),
+      },
+    };
+  }
+
+  // ========================================
+  // 🧠 ORDENAR POR VECINO MÁS CERCANO (Pre-división)
+  // ========================================
+
+  private ordenarPorVecinoMasCercano(clientes: any[]): any[] {
+    if (clientes.length === 0) return [];
+
+    let clientesRestantes = [...clientes];
+    let rutaOrdenada: any[] = [];
+
+    // Elige el primer cliente como punto de inicio arbitrario
+    let clienteActual = clientesRestantes.shift();
+    rutaOrdenada.push(clienteActual);
+
+    // Iterar hasta que todos los clientes estén en la ruta
+    while (clientesRestantes.length > 0) {
+      let indiceVecinoMasCercano = -1;
+      let distanciaMinima = Infinity;
+
+      // Busca el cliente restante más cercano
+      for (let i = 0; i < clientesRestantes.length; i++) {
+        const clienteB = clientesRestantes[i];
+
+        const distancia = this.calcularDistanciaHaversine(
+          clienteActual.latitud,
+          clienteActual.longitud,
+          clienteB.latitud,
+          clienteB.longitud
+        );
+
+        if (distancia < distanciaMinima) {
+          distanciaMinima = distancia;
+          indiceVecinoMasCercano = i;
+        }
+      }
+
+      // Mueve el cliente más cercano a la ruta ordenada
+      if (indiceVecinoMasCercano !== -1) {
+        clienteActual = clientesRestantes.splice(indiceVecinoMasCercano, 1)[0];
+        rutaOrdenada.push(clienteActual);
+      } else {
+        break;
+      }
+    }
+
+    return rutaOrdenada;
+  }
+
+  // ========================================
+  // CALCULAR RUTA OPTIMIZADA (Google Routes API)
+  // ========================================
+
+
+  private async calcularRutaOptimizada(clientesRuta: any[]) {
+    if (clientesRuta.length === 0) {
+      return { totalDistance: 0, totalDuration: 0, steps: [] };
+    }
+
+    const clientesConUbicacion = clientesRuta.filter(
+      cr => cr.cliente.latitud && cr.cliente.longitud
+    );
+
+    if (clientesConUbicacion.length <= 1) {
+      return { totalDistance: 0, totalDuration: 0, steps: [] };
+    }
+
+    if (!this.GOOGLE_API_KEY) {
+      console.error('GOOGLE_API_KEY no disponible. Usando cálculo Haversine de fallback.');
+      return this.ejecutarFallback(clientesConUbicacion);
+    }
+    // ----------------------------------------------------
+
+    try {
+      // Construir waypoints para Google Routes API
+      const waypoints = clientesConUbicacion.map(cr => ({
+        location: {
+          latLng: {
+            latitude: parseFloat(cr.cliente.latitud!), // Usar ! aquí es seguro
+            longitude: parseFloat(cr.cliente.longitud!),
+          },
+        },
+      }));
+
+      const origen = waypoints[0].location.latLng;
+      const destino = waypoints[waypoints.length - 1].location.latLng;
+      const intermedios = waypoints.slice(1, -1);
+
+      const headers = new Headers();
+      headers.set('Content-Type', 'application/json');
+      headers.set('X-Goog-Api-Key', this.GOOGLE_API_KEY); 
+      headers.set('X-Goog-FieldMask', 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline');
+
+      // Llamar a Google Routes API
+      const response = await fetch(
+        'https://routes.googleapis.com/directions/v2:computeRoutes',
+        {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            origin: { location: { latLng: origen } },
+            destination: { location: { latLng: destino } },
+            intermediates: intermedios,
+            travelMode: 'DRIVE',
+            routingPreference: 'TRAFFIC_AWARE',
+            computeAlternativeRoutes: false,
+            languageCode: 'es-MX',
+            units: 'METRIC',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error en Google Routes API:', errorText);
+        throw new Error('Error calculando ruta optimizada por API');
+      }
+
+      const data = await response.json();
+
+      if (!data.routes || data.routes.length === 0) {
+        throw new Error('No se encontró ninguna ruta');
+      }
+
+      const route = data.routes[0];
+
+      return {
+        totalDistance: route.distanceMeters || 0,
+        totalDuration: parseInt(route.duration?.replace('s', '') || '0'),
+        steps: route.polyline?.encodedPolyline || '',
+      };
+
+    } catch (error) {
+      console.error('Error en el cálculo de la ruta, usando fallback:', error);
+      return this.ejecutarFallback(clientesConUbicacion);
+    }
+  }
+
+  // 💡 Extrae la lógica del fallback a un nuevo método privado
+  private ejecutarFallback(clientesConUbicacion: any[]) {
+    let distanciaTotal = 0;
+    for (let i = 0; i < clientesConUbicacion.length - 1; i++) {
+      const a = clientesConUbicacion[i].cliente;
+      const b = clientesConUbicacion[i + 1].cliente;
+      distanciaTotal += this.calcularDistanciaHaversine(
+        parseFloat(a.latitud!),
+        parseFloat(a.longitud!),
+        parseFloat(b.latitud!),
+        parseFloat(b.longitud!)
+      );
+    }
+
+    // Estimar tiempo (asumiendo velocidad promedio de 30 km/h)
+    const VELOCIDAD_KMH = 30;
+    const tiempoEstimado = (distanciaTotal / VELOCIDAD_KMH) * 3600; // en segundos
+
+    return {
+      totalDistance: distanciaTotal * 1000, // convertir a metros
+      totalDuration: tiempoEstimado,
+      steps: [],
+    };
+  }
+
+  // ========================================
+  // CALCULAR DISTANCIA HAVERSINE (FALLBACK)
+  // ========================================
+
+  private calcularDistanciaHaversine(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) *
+      Math.cos(this.toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distancia en km
+  }
+
+  private toRad(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
 
 }

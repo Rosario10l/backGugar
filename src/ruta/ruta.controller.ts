@@ -14,6 +14,7 @@ import { CreateRutaDto } from './dto/create-ruta.dto';
 import { CreateClienteRutaDto } from './dto/create-cliente-ruta.dto';
 import { ImportarExcelDto } from './dto/importar-excel.dto';
 import { UpdateRutaDto } from './dto/update-ruta.dto';
+import { DividirRutaDto } from './dto/dividir-ruta.dto';
 
 @Controller('rutas')
 export class RutasController {
@@ -184,4 +185,10 @@ export class RutasController {
   ) {
     return this.rutasService.desasignarClienteDeRuta(clienteId, diaRutaId);
   }
+
+  @Post('dividir')
+  dividirRuta(@Body() dividirRutaDto: DividirRutaDto) {
+    return this.rutasService.dividirRuta(dividirRutaDto);
+  }
+
 }
