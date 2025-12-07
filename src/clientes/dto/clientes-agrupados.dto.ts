@@ -41,6 +41,7 @@ export class RutaConClientesDto {
   diasRuta: {
     id: number;
     diaSemana: string;
+    dividida: boolean;
     cantidadClientes: number;
     clientes: ClienteConRutaDto[];
   }[];

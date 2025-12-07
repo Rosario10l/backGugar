@@ -668,7 +668,7 @@ export class RutasService {
   }
 
   async confirmarDivisionRuta(dividirRutaDto: DividirRutaDto) {
-    const { diaRutaId, puntoCorte } = dividirRutaDto;
+    const { diaRutaId, puntoCorte, idRepartidorA, idRepartidorB } = dividirRutaDto;
 
     // 1. Volver a calcular (para seguridad)
     const preview = await this.calcularDivisionRuta(dividirRutaDto);
@@ -705,14 +705,22 @@ export class RutasService {
     // ========================================
     // 🆕 4. ELIMINAR TODOS LOS ClienteRuta del original PRIMERO
     // ========================================
-    console.log(`🗑️ Eliminando ${diaRutaOriginal.clientesRuta.length} ClienteRuta del DiaRuta ${diaRutaId}`);
+    // 💡 OPCIÓN 1: Usando el método delete de TypeORM con la condición de relación
+    const resultadoEliminacion = await this.clienteRutaRepository.delete({
+      diaRuta: { id: diaRutaId },
+    });
 
-    // Obtener los IDs de ClienteRuta a eliminar
-    const idsClienteRutaAEliminar = diaRutaOriginal.clientesRuta.map(cr => cr.id);
+    console.log(`🗑️ Eliminación masiva completada para DiaRuta ${diaRutaId}. Registros afectados: ${resultadoEliminacion.affected}`);
 
-    if (idsClienteRutaAEliminar.length > 0) {
-      await this.clienteRutaRepository.delete(idsClienteRutaAEliminar);
-      console.log(`✅ Eliminados ${idsClienteRutaAEliminar.length} registros de ClienteRuta`);
+
+    let repA: Usuario | null = null;
+    let repB: Usuario | null = null;
+
+    if (idRepartidorA) {
+      repA = await this.usuarioRepository.findOneBy({ id: idRepartidorA });
+    }
+    if (idRepartidorB) {
+      repB = await this.usuarioRepository.findOneBy({ id: idRepartidorB });
     }
 
     // ========================================
@@ -724,6 +732,7 @@ export class RutasService {
       dividida: false,
       diaRutaPadreId: diaRutaOriginal.id,
       ruta: diaRutaOriginal.ruta,
+      repartidor: repA || undefined,
     });
     const subRutaAGuardada = await this.diaRutaRepository.save(subRutaA);
 
@@ -733,6 +742,7 @@ export class RutasService {
       dividida: false,
       diaRutaPadreId: diaRutaOriginal.id,
       ruta: diaRutaOriginal.ruta,
+      repartidor: repB || undefined,
     });
     const subRutaBGuardada = await this.diaRutaRepository.save(subRutaB);
 

@@ -1,4 +1,4 @@
-import { IsNumber, IsString, IsArray, ValidateNested, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsString, IsArray, ValidateNested, IsNotEmpty, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class DividirRutaDto {
@@ -16,7 +16,15 @@ export class DividirRutaDto {
 
     @IsString() // <--- AGREGADO O CONFIRMADO ESTE CAMPO
     @IsNotEmpty()
-    diaSemana: string; // Este campo no se usa en el service, pero debe estar en el DTO
+    diaSemana: string;
+
+    @IsNumber()
+    @IsOptional()
+    idRepartidorA?: number;
+
+    @IsNumber()
+    @IsOptional()
+    idRepartidorB?: number;
 }
 
 export class SubRutaResultDto {

@@ -241,6 +241,7 @@ async updateCliente(id: number, updateClienteDto: UpdateClienteDto) {
             diaSemana: diaRuta.diaSemana,
             cantidadClientes: 0,
             clientes: [],
+            dividida: diaRuta.dividida,
           };
           rutaActual.diasRuta.push(diaRutaActual);
         }
@@ -404,11 +405,13 @@ async updateCliente(id: number, updateClienteDto: UpdateClienteDto) {
         // Buscar o crear día de ruta
         let diaRutaActual = rutaActual.diasRuta.find(d => d.id === diaRuta.id);
         if (!diaRutaActual) {
+          
           diaRutaActual = {
             id: diaRuta.id,
             diaSemana: diaRuta.diaSemana || 'Sin día',
             cantidadClientes: 0,
             clientes: [],
+            dividida: diaRuta.dividida,
           };
           rutaActual.diasRuta.push(diaRutaActual);
         }

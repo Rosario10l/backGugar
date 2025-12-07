@@ -8,6 +8,7 @@ import {
 } from 'typeorm'; // Cambiamos ManyToMany por OneToMany
 import { Ruta } from './ruta.entity';
 import { ClienteRuta } from './cliente-ruta.entity'; // <--- IMPORTANTE
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 export enum EstadoDiaRuta {
   PENDIENTE = 'pendiente',
@@ -38,7 +39,7 @@ export class DiaRuta {
   @ManyToOne(() => DiaRuta, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'diaRutaPadreId' })
   diaRutaPadre: DiaRuta;
-  
+
   @Column({ nullable: true })
   fechaInicio: Date;
 
@@ -47,6 +48,13 @@ export class DiaRuta {
 
   @ManyToOne(() => Ruta, (ruta) => ruta.diasRuta, { onDelete: 'CASCADE' })
   ruta: Ruta;
+
+  @ManyToOne(() => Usuario, { nullable: true, eager: true })
+  @JoinColumn({ name: 'idRepartidor' }) // Nombre de la columna de la clave foránea
+  repartidor: Usuario;
+
+  @Column({ nullable: true })
+  idRepartidor?: number;
 
   // --- CAMBIO CRÍTICO: Usamos la tabla intermedia de tu compañero ---
   @OneToMany(() => ClienteRuta, (cr) => cr.diaRuta, { cascade: true })
