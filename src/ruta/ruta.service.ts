@@ -545,27 +545,40 @@ export class RutasService {
   async dividirRuta(dividirRutaDto: DividirRutaDto) {
     const { diaRutaId, puntoCorte } = dividirRutaDto;
 
-    // 1. Obtener el día de ruta con todos sus clientes
-    const diaRuta = await this.diaRutaRepository.findOne({
+    // 1. Obtener el día de ruta original
+    const diaRutaOriginal = await this.diaRutaRepository.findOne({
       where: { id: diaRutaId },
-      relations: ['clientesRuta', 'clientesRuta.cliente', 'ruta'],
+      relations: ['clientesRuta', 'clientesRuta.cliente', 'clientesRuta.precio', 'ruta'],
     });
 
-    if (!diaRuta) {
+    if (!diaRutaOriginal) {
       throw new NotFoundException(`Día de ruta con ID ${diaRutaId} no encontrado`);
     }
 
+    // Validar que no haya sido dividida previamente
+    if (diaRutaOriginal.dividida) {
+      throw new BadRequestException('Esta ruta ya fue dividida previamente.');
+    }
+
+    // Validar que no esté en curso o completada
+    if (diaRutaOriginal.estado === EstadoDiaRuta.EN_CURSO ||
+      diaRutaOriginal.estado === EstadoDiaRuta.COMPLETADA) {
+      throw new BadRequestException(
+        'No se puede dividir una ruta que está en curso o ya fue completada.'
+      );
+    }
+
     // 1.1. Preparar clientes y validar
-    const clientesConUbicacion = diaRuta.clientesRuta.filter(
+    const clientesConUbicacion = diaRutaOriginal.clientesRuta.filter(
       cr => cr.cliente.latitud && cr.cliente.longitud
     );
 
-    // Validar que hay suficientes clientes con ubicación
     if (clientesConUbicacion.length < 4) {
-      throw new BadRequestException('Se necesitan al menos 4 clientes con ubicación GPS para dividir la ruta.');
+      throw new BadRequestException(
+        'Se necesitan al menos 4 clientes con ubicación GPS para dividir la ruta.'
+      );
     }
 
-    // Validar punto de corte
     const totalClientesConUbicacion = clientesConUbicacion.length;
     if (puntoCorte < 2 || puntoCorte > totalClientesConUbicacion - 2) {
       throw new BadRequestException(
@@ -573,7 +586,7 @@ export class RutasService {
       );
     }
 
-    // 2. Mapear clientes para la ordenación por vecino más cercano
+    // 2. Ordenar clientes por vecino más cercano
     let clientesParaOrdenacion = clientesConUbicacion.map(cr => ({
       id: cr.cliente.id,
       latitud: cr.cliente.latitud!,
@@ -581,33 +594,102 @@ export class RutasService {
       clienteRuta: cr,
     }));
 
-    // 3. Ordenar por vecino más cercano (simulando una secuencia lógica)
-    const clientesOrdenadosPorSecuencia = this.ordenarPorVecinoMasCercano(clientesParaOrdenacion);
-    // 
+    const clientesOrdenados = this.ordenarPorVecinoMasCercano(clientesParaOrdenacion);
 
+    // 3. Dividir en dos grupos
+    const grupoA_datos = clientesOrdenados.slice(0, puntoCorte);
+    const grupoB_datos = clientesOrdenados.slice(puntoCorte);
 
-
-    // 4. Dividir en dos grupos usando el punto de corte en la secuencia lógica
-    const grupoA_datos = clientesOrdenadosPorSecuencia.slice(0, puntoCorte);
-    const grupoB_datos = clientesOrdenadosPorSecuencia.slice(puntoCorte);
-
-    // Mapear de vuelta a las entidades de relación ClienteRuta
     const grupoA = grupoA_datos.map(d => d.clienteRuta);
     const grupoB = grupoB_datos.map(d => d.clienteRuta);
 
-    // 5. Calcular rutas optimizadas para cada grupo
+    // 4. Calcular rutas optimizadas para cada grupo
     const rutaA = await this.calcularRutaOptimizada(grupoA);
     const rutaB = await this.calcularRutaOptimizada(grupoB);
 
-    // 6. Retornar resultado
+    // ========================================
+    // 5. CREAR SUB-RUTA A
+    // ========================================
+    const subRutaA = this.diaRutaRepository.create({
+      diaSemana: `${diaRutaOriginal.diaSemana} - Grupo A`,
+      estado: EstadoDiaRuta.PENDIENTE,
+      dividida: false, // Esta es una sub-ruta, no ha sido dividida
+      diaRutaPadreId: diaRutaOriginal.id, // 🆕 Referencia al padre
+      ruta: diaRutaOriginal.ruta,
+    });
+    const subRutaAGuardada = await this.diaRutaRepository.save(subRutaA);
+
+    // ========================================
+    // 6. CREAR SUB-RUTA B
+    // ========================================
+    const subRutaB = this.diaRutaRepository.create({
+      diaSemana: `${diaRutaOriginal.diaSemana} - Grupo B`,
+      estado: EstadoDiaRuta.PENDIENTE,
+      dividida: false,
+      diaRutaPadreId: diaRutaOriginal.id, // 🆕 Referencia al padre
+      ruta: diaRutaOriginal.ruta,
+    });
+    const subRutaBGuardada = await this.diaRutaRepository.save(subRutaB);
+
+    // ========================================
+    // 7. REASIGNAR CLIENTES A LAS SUB-RUTAS
+    // ========================================
+
+    // Asignar clientes al Grupo A
+    const clientesGrupoA = grupoA.map(cr => {
+      return this.clienteRutaRepository.create({
+        cliente: cr.cliente,
+        diaRuta: subRutaAGuardada,
+        precio: cr.precio,
+        es_credito: cr.es_credito,
+        requiere_factura: cr.requiere_factura,
+        visitado: false,
+        garrafonesVendidos: null,
+      });
+    });
+    await this.clienteRutaRepository.save(clientesGrupoA);
+
+    // Asignar clientes al Grupo B
+    const clientesGrupoB = grupoB.map(cr => {
+      return this.clienteRutaRepository.create({
+        cliente: cr.cliente,
+        diaRuta: subRutaBGuardada,
+        precio: cr.precio,
+        es_credito: cr.es_credito,
+        requiere_factura: cr.requiere_factura,
+        visitado: false,
+        garrafonesVendidos: null,
+      });
+    });
+    await this.clienteRutaRepository.save(clientesGrupoB);
+
+    // ========================================
+    // 8. MARCAR LA RUTA ORIGINAL COMO DIVIDIDA
+    // ========================================
+    diaRutaOriginal.dividida = true;
+
+    // ✅ El estado operacional NO se modifica
+    // Sigue siendo PENDIENTE, PAUSADA, etc.
+    // Solo indicamos que fue dividida
+
+    await this.diaRutaRepository.save(diaRutaOriginal);
+
+    // ========================================
+    // 9. RETORNAR RESULTADO
+    // ========================================
     return {
-      mensaje: 'Ruta dividida exitosamente y sub-rutas optimizadas',
+      mensaje: 'Ruta dividida exitosamente. Se crearon dos nuevas sub-rutas.',
       rutaOriginal: {
-        nombre: diaRuta.ruta.nombre,
-        diaSemana: diaRuta.diaSemana,
+        id: diaRutaOriginal.id,
+        nombre: diaRutaOriginal.ruta.nombre,
+        diaSemana: diaRutaOriginal.diaSemana,
         totalClientes: clientesConUbicacion.length,
+        estado: diaRutaOriginal.estado, // ✅ Estado operacional sin cambios
+        dividida: diaRutaOriginal.dividida, // ✅ Ahora es true
       },
       subRutaA: {
+        id: subRutaAGuardada.id,
+        nombre: subRutaAGuardada.diaSemana,
         totalClientes: grupoA.length,
         distanciaKm: (rutaA.totalDistance / 1000).toFixed(2),
         tiempoMinutos: Math.floor(rutaA.totalDuration / 60),
@@ -618,6 +700,8 @@ export class RutasService {
         })),
       },
       subRutaB: {
+        id: subRutaBGuardada.id,
+        nombre: subRutaBGuardada.diaSemana,
         totalClientes: grupoB.length,
         distanciaKm: (rutaB.totalDistance / 1000).toFixed(2),
         tiempoMinutos: Math.floor(rutaB.totalDuration / 60),
@@ -629,7 +713,6 @@ export class RutasService {
       },
     };
   }
-
   // ========================================
   // 🧠 ORDENAR POR VECINO MÁS CERCANO (Pre-división)
   // ========================================
@@ -719,7 +802,7 @@ export class RutasService {
 
       const headers = new Headers();
       headers.set('Content-Type', 'application/json');
-      headers.set('X-Goog-Api-Key', this.GOOGLE_API_KEY); 
+      headers.set('X-Goog-Api-Key', this.GOOGLE_API_KEY);
       headers.set('X-Goog-FieldMask', 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline');
 
       // Llamar a Google Routes API
@@ -815,6 +898,40 @@ export class RutasService {
 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distancia en km
+  }
+
+  async obtenerSubRutasDe(diaRutaPadreId: number) {
+    return await this.diaRutaRepository.find({
+      where: {
+        diaRutaPadreId: diaRutaPadreId,
+      },
+      relations: ['ruta', 'clientesRuta', 'clientesRuta.cliente'],
+    });
+  }
+
+  // ========================================
+  // OBTENER RUTA COMPLETA CON INFO DE DIVISIÓN
+  // ========================================
+  async obtenerRutaConInfoDivision(diaRutaId: number) {
+    const diaRuta = await this.diaRutaRepository.findOne({
+      where: { id: diaRutaId },
+      relations: ['ruta', 'clientesRuta', 'clientesRuta.cliente', 'diaRutaPadre'],
+    });
+
+    if (!diaRuta) {
+      throw new NotFoundException('Ruta no encontrada');
+    }
+
+    // Si fue dividida, obtener sus sub-rutas
+    let subRutas: DiaRuta[] = [];
+    if (diaRuta.dividida) {
+      subRutas = await this.obtenerSubRutasDe(diaRuta.id);
+    }
+
+    return {
+      ...diaRuta,
+      subRutas,
+    };
   }
 
   private toRad(degrees: number): number {

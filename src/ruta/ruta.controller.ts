@@ -87,6 +87,13 @@ export class RutasController {
     return this.rutasService.obtenerRutasRepartidor(repartidorId);
   }
 
+  @Get('dia-ruta/:id/sub-rutas')
+  async obtenerSubRutas(
+    @Param('id', ParseIntPipe) diaRutaId: number
+  ) {
+    return await this.rutasService.obtenerSubRutasDe(diaRutaId);
+  }
+
   @Get(':id')
   async obtenerRutaPorId(@Param('id', ParseIntPipe) id: number) {
     // CORREGIDO: Quitamos el segundo argumento, el servicio ya trae las relaciones
@@ -184,6 +191,13 @@ export class RutasController {
     @Param('diaRutaId', ParseIntPipe) diaRutaId: number
   ) {
     return this.rutasService.desasignarClienteDeRuta(clienteId, diaRutaId);
+  }
+
+    @Get('dia-ruta/:id/completa')
+  async obtenerRutaCompleta(
+    @Param('id', ParseIntPipe) diaRutaId: number
+  ) {
+    return await this.rutasService.obtenerRutaConInfoDivision(diaRutaId);
   }
 
   @Post('dividir')

@@ -54,7 +54,7 @@ export class ClienteRuta {
   visitado: boolean;
 
   @Column({ type: 'int', nullable: true })
-  garrafonesVendidos: number;
+  garrafonesVendidos: number | null;
 
   @CreateDateColumn()
   created_at: Date;

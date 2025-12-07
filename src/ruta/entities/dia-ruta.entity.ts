@@ -27,6 +27,16 @@ export class DiaRuta {
   @Column({ default: EstadoDiaRuta.PENDIENTE })
   estado: string;
 
+
+  @Column({ default: false })
+  dividida: boolean;
+
+  @Column({ nullable: true })
+  diaRutaPadreId?: number;
+
+  @ManyToOne(() => DiaRuta, { nullable: true })
+  diaRutaPadre?: DiaRuta;
+  
   @Column({ nullable: true })
   fechaInicio: Date;
 
