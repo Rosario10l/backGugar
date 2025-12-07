@@ -75,15 +75,35 @@ export class RutasService {
   }
 
   async update(id: number, updateRutaDto: UpdateRutaDto): Promise<Ruta> {
+
+    // 1. Cargar la ruta existente
     const ruta = await this.findOne(id);
-    const { idRepartidor, ...rest } = updateRutaDto;
+
+    // 2. Desestructurar el DTO para separar los IDs de las propiedades que se fusionarán
+    const { idRepartidor, idSupervisor, ...rest } = updateRutaDto; // 💡 Obtener idSupervisor
+
+    // --- Lógica para Repartidor ---
     if (idRepartidor) {
+      // Asumiendo que ruta.repartidor es de tipo Usuario
       const nuevoRepartidor = await this.usuarioRepository.findOneBy({
         id: idRepartidor,
       });
       if (nuevoRepartidor) ruta.repartidor = nuevoRepartidor;
     }
+
+    // --- Lógica para Supervisor (NUEVO) ---
+    if (idSupervisor) { // 💡 Si el DTO incluye un idSupervisor
+      // Asumiendo que ruta.supervisor es de tipo Usuario
+      const nuevoSupervisor = await this.usuarioRepository.findOneBy({
+        id: idSupervisor,
+      });
+      if (nuevoSupervisor) ruta.supervisor = nuevoSupervisor;
+    }
+
+    // 3. Fusionar el resto de las propiedades (nombre, etc.)
     this.rutaRepository.merge(ruta, rest);
+
+    // 4. Guardar los cambios
     return this.rutaRepository.save(ruta);
   }
 
@@ -539,10 +559,12 @@ export class RutasService {
     };
   }
 
+
+
   // ========================================
-  // 🆕 DIVIDIR RUTA
+  // 🆕 MÉTODO 1: CALCULAR SIN GUARDAR (Preview)
   // ========================================
-  async dividirRuta(dividirRutaDto: DividirRutaDto) {
+  async calcularDivisionRuta(dividirRutaDto: DividirRutaDto) {
     const { diaRutaId, puntoCorte } = dividirRutaDto;
 
     // 1. Obtener el día de ruta original
@@ -555,12 +577,11 @@ export class RutasService {
       throw new NotFoundException(`Día de ruta con ID ${diaRutaId} no encontrado`);
     }
 
-    // Validar que no haya sido dividida previamente
+    // Validaciones
     if (diaRutaOriginal.dividida) {
       throw new BadRequestException('Esta ruta ya fue dividida previamente.');
     }
 
-    // Validar que no esté en curso o completada
     if (diaRutaOriginal.estado === EstadoDiaRuta.EN_CURSO ||
       diaRutaOriginal.estado === EstadoDiaRuta.COMPLETADA) {
       throw new BadRequestException(
@@ -568,7 +589,6 @@ export class RutasService {
       );
     }
 
-    // 1.1. Preparar clientes y validar
     const clientesConUbicacion = diaRutaOriginal.clientesRuta.filter(
       cr => cr.cliente.latitud && cr.cliente.longitud
     );
@@ -586,7 +606,7 @@ export class RutasService {
       );
     }
 
-    // 2. Ordenar clientes por vecino más cercano
+    // 2. Ordenar clientes
     let clientesParaOrdenacion = clientesConUbicacion.map(cr => ({
       id: cr.cliente.id,
       latitud: cr.cliente.latitud!,
@@ -603,39 +623,122 @@ export class RutasService {
     const grupoA = grupoA_datos.map(d => d.clienteRuta);
     const grupoB = grupoB_datos.map(d => d.clienteRuta);
 
-    // 4. Calcular rutas optimizadas para cada grupo
+    // 4. Calcular rutas optimizadas
     const rutaA = await this.calcularRutaOptimizada(grupoA);
     const rutaB = await this.calcularRutaOptimizada(grupoB);
 
     // ========================================
-    // 5. CREAR SUB-RUTA A
+    // 🆕 SOLO RETORNAR CÁLCULOS - NO GUARDAR
+    // ========================================
+    return {
+      mensaje: 'Vista previa de la división calculada (no guardada aún)',
+      rutaOriginal: {
+        id: diaRutaOriginal.id,
+        nombre: diaRutaOriginal.ruta.nombre,
+        diaSemana: diaRutaOriginal.diaSemana,
+        totalClientes: clientesConUbicacion.length,
+        estado: diaRutaOriginal.estado,
+        dividida: false, // Aún no se ha dividido
+      },
+      subRutaA: {
+        id: null, // 🆕 Null porque aún no existe
+        nombre: `${diaRutaOriginal.diaSemana} - Grupo A`,
+        totalClientes: grupoA.length,
+        distanciaKm: (rutaA.totalDistance / 1000).toFixed(2),
+        tiempoMinutos: Math.floor(rutaA.totalDuration / 60),
+        clientes: grupoA.map(cr => ({
+          id: cr.cliente.id,
+          nombre: cr.cliente.nombre,
+          direccion: `${cr.cliente.calle}, ${cr.cliente.colonia}`,
+        })),
+      },
+      subRutaB: {
+        id: null, // 🆕 Null porque aún no existe
+        nombre: `${diaRutaOriginal.diaSemana} - Grupo B`,
+        totalClientes: grupoB.length,
+        distanciaKm: (rutaB.totalDistance / 1000).toFixed(2),
+        tiempoMinutos: Math.floor(rutaB.totalDuration / 60),
+        clientes: grupoB.map(cr => ({
+          id: cr.cliente.id,
+          nombre: cr.cliente.nombre,
+          direccion: `${cr.cliente.calle}, ${cr.cliente.colonia}`,
+        })),
+      },
+    };
+  }
+
+  async confirmarDivisionRuta(dividirRutaDto: DividirRutaDto) {
+    const { diaRutaId, puntoCorte } = dividirRutaDto;
+
+    // 1. Volver a calcular (para seguridad)
+    const preview = await this.calcularDivisionRuta(dividirRutaDto);
+
+    // 2. Obtener el día de ruta original nuevamente
+    const diaRutaOriginal = await this.diaRutaRepository.findOne({
+      where: { id: diaRutaId },
+      relations: ['clientesRuta', 'clientesRuta.cliente', 'clientesRuta.precio', 'ruta'],
+    });
+
+    if (!diaRutaOriginal) {
+      throw new NotFoundException('Ruta no encontrada');
+    }
+
+    // 3. Ordenar y dividir clientes
+    const clientesConUbicacion = diaRutaOriginal.clientesRuta.filter(
+      cr => cr.cliente.latitud && cr.cliente.longitud
+    );
+
+    let clientesParaOrdenacion = clientesConUbicacion.map(cr => ({
+      id: cr.cliente.id,
+      latitud: cr.cliente.latitud!,
+      longitud: cr.cliente.longitud!,
+      clienteRuta: cr,
+    }));
+
+    const clientesOrdenados = this.ordenarPorVecinoMasCercano(clientesParaOrdenacion);
+    const grupoA_datos = clientesOrdenados.slice(0, puntoCorte);
+    const grupoB_datos = clientesOrdenados.slice(puntoCorte);
+
+    const grupoA = grupoA_datos.map(d => d.clienteRuta);
+    const grupoB = grupoB_datos.map(d => d.clienteRuta);
+
+    // ========================================
+    // 🆕 4. ELIMINAR TODOS LOS ClienteRuta del original PRIMERO
+    // ========================================
+    console.log(`🗑️ Eliminando ${diaRutaOriginal.clientesRuta.length} ClienteRuta del DiaRuta ${diaRutaId}`);
+
+    // Obtener los IDs de ClienteRuta a eliminar
+    const idsClienteRutaAEliminar = diaRutaOriginal.clientesRuta.map(cr => cr.id);
+
+    if (idsClienteRutaAEliminar.length > 0) {
+      await this.clienteRutaRepository.delete(idsClienteRutaAEliminar);
+      console.log(`✅ Eliminados ${idsClienteRutaAEliminar.length} registros de ClienteRuta`);
+    }
+
+    // ========================================
+    // 5. CREAR SUB-RUTAS
     // ========================================
     const subRutaA = this.diaRutaRepository.create({
       diaSemana: `${diaRutaOriginal.diaSemana} - Grupo A`,
       estado: EstadoDiaRuta.PENDIENTE,
-      dividida: false, // Esta es una sub-ruta, no ha sido dividida
-      diaRutaPadreId: diaRutaOriginal.id, // 🆕 Referencia al padre
+      dividida: false,
+      diaRutaPadreId: diaRutaOriginal.id,
       ruta: diaRutaOriginal.ruta,
     });
     const subRutaAGuardada = await this.diaRutaRepository.save(subRutaA);
 
-    // ========================================
-    // 6. CREAR SUB-RUTA B
-    // ========================================
     const subRutaB = this.diaRutaRepository.create({
       diaSemana: `${diaRutaOriginal.diaSemana} - Grupo B`,
       estado: EstadoDiaRuta.PENDIENTE,
       dividida: false,
-      diaRutaPadreId: diaRutaOriginal.id, // 🆕 Referencia al padre
+      diaRutaPadreId: diaRutaOriginal.id,
       ruta: diaRutaOriginal.ruta,
     });
     const subRutaBGuardada = await this.diaRutaRepository.save(subRutaB);
 
     // ========================================
-    // 7. REASIGNAR CLIENTES A LAS SUB-RUTAS
+    // 6. CREAR NUEVOS ClienteRuta para las sub-rutas
     // ========================================
-
-    // Asignar clientes al Grupo A
     const clientesGrupoA = grupoA.map(cr => {
       return this.clienteRutaRepository.create({
         cliente: cr.cliente,
@@ -648,8 +751,8 @@ export class RutasService {
       });
     });
     await this.clienteRutaRepository.save(clientesGrupoA);
+    console.log(`✅ Creados ${clientesGrupoA.length} ClienteRuta para Grupo A`);
 
-    // Asignar clientes al Grupo B
     const clientesGrupoB = grupoB.map(cr => {
       return this.clienteRutaRepository.create({
         cliente: cr.cliente,
@@ -662,30 +765,30 @@ export class RutasService {
       });
     });
     await this.clienteRutaRepository.save(clientesGrupoB);
+    console.log(`✅ Creados ${clientesGrupoB.length} ClienteRuta para Grupo B`);
 
     // ========================================
-    // 8. MARCAR LA RUTA ORIGINAL COMO DIVIDIDA
+    // 7. MARCAR DiaRuta ORIGINAL COMO DIVIDIDA
     // ========================================
     diaRutaOriginal.dividida = true;
-
-    // ✅ El estado operacional NO se modifica
-    // Sigue siendo PENDIENTE, PAUSADA, etc.
-    // Solo indicamos que fue dividida
-
     await this.diaRutaRepository.save(diaRutaOriginal);
+    console.log('✅ DiaRuta original marcado como dividido');
 
     // ========================================
-    // 9. RETORNAR RESULTADO
+    // 8. RETORNAR RESULTADO
     // ========================================
+    const rutaA = await this.calcularRutaOptimizada(grupoA);
+    const rutaB = await this.calcularRutaOptimizada(grupoB);
+
     return {
-      mensaje: 'Ruta dividida exitosamente. Se crearon dos nuevas sub-rutas.',
+      mensaje: 'Ruta dividida exitosamente',
       rutaOriginal: {
         id: diaRutaOriginal.id,
         nombre: diaRutaOriginal.ruta.nombre,
         diaSemana: diaRutaOriginal.diaSemana,
-        totalClientes: clientesConUbicacion.length,
-        estado: diaRutaOriginal.estado, // ✅ Estado operacional sin cambios
-        dividida: diaRutaOriginal.dividida, // ✅ Ahora es true
+        totalClientes: 0,
+        estado: diaRutaOriginal.estado,
+        dividida: true,
       },
       subRutaA: {
         id: subRutaAGuardada.id,
@@ -712,6 +815,15 @@ export class RutasService {
         })),
       },
     };
+  }
+
+  // ========================================
+  // 🆕 MANTENER EL MÉTODO ORIGINAL POR COMPATIBILIDAD
+  // Pero ahora llama a calcularDivisionRuta
+  // ========================================
+  async dividirRuta(dividirRutaDto: DividirRutaDto) {
+    // Ahora solo calcula, no guarda
+    return this.calcularDivisionRuta(dividirRutaDto);
   }
   // ========================================
   // 🧠 ORDENAR POR VECINO MÁS CERCANO (Pre-división)

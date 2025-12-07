@@ -109,7 +109,6 @@ export class RutasController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRutaDto: any,
   ) {
-    // CORREGIDO: El método en el servicio se llama 'update'
     return this.rutasService.update(id, updateRutaDto);
   }
 
@@ -200,9 +199,15 @@ export class RutasController {
     return await this.rutasService.obtenerRutaConInfoDivision(diaRutaId);
   }
 
-  @Post('dividir')
-  dividirRuta(@Body() dividirRutaDto: DividirRutaDto) {
-    return this.rutasService.dividirRuta(dividirRutaDto);
-  }
+ @Post('dividir')
+dividirRuta(@Body() dividirRutaDto: DividirRutaDto) {
+  // Este ahora solo calcula (preview)
+  return this.rutasService.dividirRuta(dividirRutaDto);
+}
 
+// 🆕 NUEVO ENDPOINT: Confirmar división
+@Post('dividir/confirmar')
+confirmarDivisionRuta(@Body() dividirRutaDto: DividirRutaDto) {
+  return this.rutasService.confirmarDivisionRuta(dividirRutaDto);
+}
 }

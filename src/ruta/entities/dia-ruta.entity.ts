@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm'; // Cambiamos ManyToMany por OneToMany
 import { Ruta } from './ruta.entity';
 import { ClienteRuta } from './cliente-ruta.entity'; // <--- IMPORTANTE
@@ -34,8 +35,9 @@ export class DiaRuta {
   @Column({ nullable: true })
   diaRutaPadreId?: number;
 
-  @ManyToOne(() => DiaRuta, { nullable: true })
-  diaRutaPadre?: DiaRuta;
+  @ManyToOne(() => DiaRuta, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'diaRutaPadreId' })
+  diaRutaPadre: DiaRuta;
   
   @Column({ nullable: true })
   fechaInicio: Date;
