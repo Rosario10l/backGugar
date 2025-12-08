@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -17,20 +17,15 @@ import { ScheduleModule } from '@nestjs/schedule';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule], // Importa ConfigModule para poder inyectar ConfigService
-      useFactory: (configService: ConfigService) => ({
-        type: configService.get<any>('DB_TYPE'), // 'mysql'
-        host: configService.get<string>('DB_HOST'), // 'localhost'
-        port: parseInt(configService.get<string>('DB_PORT') ?? '3306', 10),
-        username: configService.get<string>('DB_USERNAME'), // 'root'
-        password: configService.get<string>('DB_PASSWORD'), // ''
-        database: configService.get<string>('DB_DATABASE'), // 'gugar_db'
-
-        autoLoadEntities: true,
-        synchronize: true, // ¡Solo usar true en desarrollo!
-      }),
-      inject: [ConfigService], // Especifica el servicio a inyectar en useFactory
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: '',
+      database: 'gugar_db',
+      autoLoadEntities:true,
+      synchronize: true, 
     }),
     UsuariosModule,
     NotificacionesModule,
@@ -45,4 +40,4 @@ import { ScheduleModule } from '@nestjs/schedule';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

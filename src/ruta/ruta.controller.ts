@@ -128,6 +128,14 @@ export class RutasController {
     return this.rutasService.asignarPersonalARuta(id, dto);
   }
 
+  @Patch('dia-ruta/:id/repartidor')
+  actualizarRepartidorDia(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { repartidorId: number | null },
+  ) {
+    return this.rutasService.actualizarRepartidorDia(id, dto.repartidorId);
+  }
+
   @Patch('dia-ruta/:id/estado')
   cambiarEstadoDiaRuta(
     @Param('id', ParseIntPipe) id: number,
@@ -178,6 +186,19 @@ export class RutasController {
   ) {
     return this.rutasService.removeClienteFromRuta(idDiaRuta, idCliente);
   }
+  
+  @Get('dia-ruta/:id')
+  async obtenerDiaRutaPorId(@Param('id', ParseIntPipe) id: number) {
+    // Utilizamos el nuevo método del servicio
+    return this.rutasService.obtenerDiaRutaConClientes(id);
+  }
+
+  @Get('dias-ruta/repartidor/:repartidorId')
+  obtenerDiasRutaRepartidor(
+    @Param('repartidorId', ParseIntPipe) repartidorId: number,
+  ) {
+    return this.rutasService.obtenerDiasRutaDeRepartidor(repartidorId);
+  }
 
   @Post('asignar-cliente')
   asignarCliente(@Body() data: { clienteId: number; diaRutaId: number; precioId: number }) {
@@ -192,22 +213,23 @@ export class RutasController {
     return this.rutasService.desasignarClienteDeRuta(clienteId, diaRutaId);
   }
 
-    @Get('dia-ruta/:id/completa')
+  @Get('dia-ruta/:id/completa')
   async obtenerRutaCompleta(
     @Param('id', ParseIntPipe) diaRutaId: number
   ) {
     return await this.rutasService.obtenerRutaConInfoDivision(diaRutaId);
   }
 
- @Post('dividir')
-dividirRuta(@Body() dividirRutaDto: DividirRutaDto) {
-  // Este ahora solo calcula (preview)
-  return this.rutasService.dividirRuta(dividirRutaDto);
-}
+  @Post('dividir')
+  dividirRuta(@Body() dividirRutaDto: DividirRutaDto) {
+    // Este ahora solo calcula (preview)
+    return this.rutasService.dividirRuta(dividirRutaDto);
+  }
 
-// 🆕 NUEVO ENDPOINT: Confirmar división
-@Post('dividir/confirmar')
-confirmarDivisionRuta(@Body() dividirRutaDto: DividirRutaDto) {
-  return this.rutasService.confirmarDivisionRuta(dividirRutaDto);
-}
+  // 🆕 NUEVO ENDPOINT: Confirmar división
+  @Post('dividir/confirmar')
+  confirmarDivisionRuta(@Body() dividirRutaDto: DividirRutaDto) {
+    return this.rutasService.confirmarDivisionRuta(dividirRutaDto);
+  }
+
 }

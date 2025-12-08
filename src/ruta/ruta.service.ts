@@ -65,6 +65,7 @@ export class RutasService {
         'repartidor',
         'supervisor',
         'diasRuta',
+        'diasRuta.repartidor',
         'diasRuta.clientesRuta',
         'diasRuta.clientesRuta.cliente',
         'diasRuta.clientesRuta.cliente.tipoPrecio',
@@ -74,6 +75,41 @@ export class RutasService {
     return ruta;
   }
 
+
+  async actualizarRepartidorDia(diaRutaId: number, repartidorId: number | null) {
+    const diaRuta = await this.diaRutaRepository.findOne({
+      where: { id: diaRutaId },
+      relations: ['ruta'],
+    });
+
+    if (!diaRuta) {
+      throw new NotFoundException(`Día de ruta con ID ${diaRutaId} no encontrado`);
+    }
+
+    if (repartidorId) {
+      const repartidor = await this.usuarioRepository.findOneBy({ id: repartidorId });
+      if (!repartidor) {
+        throw new NotFoundException(`Repartidor con ID ${repartidorId} no encontrado`);
+      }
+      diaRuta.repartidor = repartidor;
+      diaRuta.idRepartidor = repartidorId;
+    } else {
+      diaRuta.repartidor = null as any;
+      diaRuta.idRepartidor = undefined;
+    }
+
+    await this.diaRutaRepository.save(diaRuta);
+
+    return {
+      success: true,
+      message: 'Repartidor del día actualizado',
+      diaRuta: {
+        id: diaRuta.id,
+        diaSemana: diaRuta.diaSemana,
+        repartidorId: diaRuta.idRepartidor,
+      },
+    };
+  }
   async update(id: number, updateRutaDto: UpdateRutaDto): Promise<Ruta> {
 
     // 1. Cargar la ruta existente
@@ -888,6 +924,51 @@ export class RutasService {
   // ========================================
 
 
+  async obtenerDiaRutaConClientes(id: number): Promise<DiaRuta> {
+    const diaRuta = await this.diaRutaRepository.findOne({
+      where: { id },
+      relations: [
+        'ruta', // Para el nombre en la cabecera
+        'repartidor',
+        'clientesRuta',
+        'clientesRuta.cliente', // Detalles del cliente (nombre, latitud, longitud)
+        'clientesRuta.precio', // Precio asignado
+      ],
+    });
+
+    if (!diaRuta) {
+      throw new NotFoundException(`DiaRuta con ID ${id} no encontrado`);
+    }
+
+    // Opcional: Asegurarse de que el nombre de la ruta padre se use para el título
+    (diaRuta as any).nombre = diaRuta.ruta.nombre;
+
+    return diaRuta;
+  }
+
+
+  async obtenerDiasRutaDeRepartidor(repartidorId: number): Promise<DiaRuta[]> {
+
+
+    const diasRuta = await this.diaRutaRepository
+      .createQueryBuilder('diaRuta')
+      .leftJoinAndSelect('diaRuta.ruta', 'ruta')
+      .leftJoinAndSelect('ruta.supervisor', 'supervisor')
+      .leftJoinAndSelect('diaRuta.clientesRuta', 'clientesRuta')
+      .where('diaRuta.dividida = FALSE') // Debe ser una ruta principal NO dividida
+      .andWhere(
+        'diaRuta.idRepartidor = :repartidorId OR ' +
+
+        '(diaRuta.dividida = FALSE AND diaRuta.idRepartidor IS NULL AND ruta.idRepartidor = :repartidorId)'
+      )
+      .setParameters({ repartidorId: repartidorId })
+      .orderBy('ruta.nombre', 'ASC')
+      .getMany();
+
+    return diasRuta.filter(dr => dr.dividida === false);
+  }
+
+
   private async calcularRutaOptimizada(clientesRuta: any[]) {
     if (clientesRuta.length === 0) {
       return { totalDistance: 0, totalDuration: 0, steps: [] };
@@ -972,7 +1053,6 @@ export class RutasService {
     }
   }
 
-  // 💡 Extrae la lógica del fallback a un nuevo método privado
   private ejecutarFallback(clientesConUbicacion: any[]) {
     let distanciaTotal = 0;
     for (let i = 0; i < clientesConUbicacion.length - 1; i++) {
